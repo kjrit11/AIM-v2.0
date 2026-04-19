@@ -1,0 +1,94 @@
+/**
+ * AIM v2 — Global Styles
+ * =======================
+ *
+ * Light-mode CSS variables (from docs/STYLE_GUIDE.md §2.11).
+ * Dark mode deferred — when wired up, add `[data-theme="dark"] { ... }` block
+ * with tokens from §2.12.
+ *
+ * All components must reference these variables via Tailwind utility classes
+ * (configured in tailwind.config.ts) rather than hardcoded values.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Fonts — populated by next/font/google in app/layout.tsx */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Fira Code',
+      Consolas, monospace;
+
+    /* Surfaces */
+    --bg-page: #f6f6fb;
+    --bg-panel: #f6f6fb;
+    --bg-surface: #ffffff;
+
+    /* Text */
+    --text-primary: #1c1c38;
+    --text-secondary: #151744;
+    --text-tertiary: #6b6b9a;
+    --text-quaternary: #dddde8;
+
+    /* Brand + accent */
+    --brand: #151744;
+    --accent: #707cf2;
+    --accent-hover: #383392;
+    --accent-active: #383392;
+
+    /* Semantic status */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #f56e7b;
+    --info: #3b82f6;
+
+    /* Borders */
+    --border-primary: #707cf2;
+    --border-subtle: #dddde8;
+    --border-hairline: rgba(21, 23, 68, 0.08);
+
+    /* Shadows */
+    --shadow-ring: rgba(21, 23, 68, 0.08) 0px 0px 0px 1px;
+    --shadow-subtle: rgba(21, 23, 68, 0.04) 0px 2px 4px 0px;
+    --shadow-card: var(--shadow-ring), var(--shadow-subtle);
+    --shadow-elevated: var(--shadow-ring),
+      rgba(21, 23, 68, 0.06) 0px 4px 12px 0px;
+  }
+
+  /* Base element resets — keep minimal, let components own their styling */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+  }
+
+  /* Monospace numbers, IDs, timestamps — STYLE_GUIDE §3.3 */
+  .font-mono,
+  .font-mono * {
+    font-family: var(--font-mono);
+    font-feature-settings: 'tnum' 1, 'calt' 0;
+  }
+
+  /* Focus outline — accessible default, overridden per-component where needed */
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Remove default button styling */
+  button {
+    font-family: inherit;
+  }
+}

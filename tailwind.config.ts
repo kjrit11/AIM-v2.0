@@ -114,9 +114,10 @@ const config: Config = {
         inner: 'var(--shadow-inner)',
       },
 
-      // Max width for page shells
+      // Max width for page shells and narrow containers
       maxWidth: {
         page: '1280px',
+        'sign-in': '400px',
       },
     },
   },

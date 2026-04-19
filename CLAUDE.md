@@ -1,6 +1,6 @@
 # CLAUDE.md — AIM v2 Sales Command Center
 
-**Last updated:** 2026-04-18 (Phase 0 scaffold + Wave 1 cleanup)
+**Last updated:** 2026-04-19 (Phase 2 auth — rule #2 file path updated for NextAuth v5)
 
 ---
 
@@ -54,7 +54,7 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 ## Non-negotiable rules
 
 1. All DB access through `executeQuery()` from `/src/lib/db.ts`. Never raw SQL inline.
-2. All auth through `getSessionUser()` or `requireAuth()` from `/src/lib/auth.ts`.
+2. All auth through `getSessionUser()` or `requireAuth()` from `/src/auth.ts`.
 3. All cache TTLs from `CACHE.*` in `/src/lib/queryConfig.ts`. Never hardcode `staleTime` or `gcTime` in components.
 4. No inline hex values in any `.tsx` or `.ts` file under `/src/components/`. Tokens only. Enforced by ESLint.
 5. No `sales.app.*` references in application code, except for the explicitly allowlisted tables during their migration phase (see `docs/ARCHITECTURE.md` § Schema inventory).

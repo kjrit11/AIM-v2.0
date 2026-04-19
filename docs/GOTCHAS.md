@@ -1,6 +1,6 @@
 # Gotchas — AIM v2
 
-**Last updated:** 2026-04-19 (Phase 2 dark indigo pivot — next/font dual-family, Tailwind `bg-bg-*` nesting, semantic pair rule)
+**Last updated:** 2026-04-19 (Phase 2 auth — azure-ad provider deprecation, middleware prefix collisions, auth() dual-role)
 
 Running list of non-obvious things you need to know before touching specific tables, patterns, or integrations. Appended to at the end of every session where a new gotcha is discovered.
 
@@ -138,6 +138,36 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 **Where:** `src/app/globals.css`, `tailwind.config.ts`, all components using semantic colors
 **Discovered:** 2026-04-19 (Phase 2 dark indigo pivot)
 **Lesson:** Each semantic token (`success`, `warning`, `danger`, `info`) is a `{ fg, bg }` pair — there is no `bg-danger` or `text-danger` utility. Use `bg-danger-bg` + `text-danger-fg` together. The pair is the design contract: fg without bg reads as raw color, bg without fg reads as broken. An input's error border uses `border-danger-fg` (the fg carries outside the pair because a 1px line needs the punchy color); a badge uses both. When writing a new component, ask "is this a block or a line?" — blocks use the pair, lines use fg.
+
+### NextAuth v5 `azure-ad` provider is a deprecated re-export — keep using it
+**Where:** `src/auth.ts`, `next-auth/providers/azure-ad`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** In `next-auth@5.0.0-beta.31`, `next-auth/providers/azure-ad` is marked `@deprecated` and re-exports the Microsoft Entra ID provider with `id: "azure-ad"` pinned. The non-deprecated `next-auth/providers/microsoft-entra-id` sets `id: "microsoft-entra-id"`. We import from the deprecated module specifically because our Azure app registration's redirect URI is `/api/auth/callback/azure-ad`; switching to the non-deprecated module would change the callback path and require re-registering in Azure (single-tenant admin consent included). Keep the pinned id until there's a reason to re-register. Live with the deprecation warning.
+
+### Middleware matcher uses prefix match — `/designer`, `/design-tokens` would leak as public
+**Where:** `src/middleware.ts`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** The middleware matcher uses prefix match, so any future route starting with `/design` (e.g. `/designer`, `/design-tokens`) will be treated as public. When adding such a route, tighten the matcher OR rename the route. Same rule applies if anyone adds an `/authentication` route — the `auth` token in the negative lookahead matches it too. If the allowlist grows past three entries with ambiguous prefixes, switch from lookahead-excludes to explicit per-route gating in the `auth()` callback.
+
+### `maxWidth['sign-in']: '400px'` is a layout constant, not a token
+**Where:** `tailwind.config.ts`, consumed by `src/app/auth/signin/page.tsx` + `src/app/auth/error/page.tsx` + `src/app/page.tsx`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** The `sign-in: '400px'` entry under `theme.extend.maxWidth` is a one-off layout constant for the auth card, not a general-purpose design token. It doesn't belong in `src/lib/tokens.ts` and shouldn't show up in the `/design` gallery. Accept it as the narrow exception to "tokens only" — the alternative would be `max-w-[400px]` arbitrary values in three places, which the same rule also bans. If the pattern keeps recurring (a second "narrow centered card" screen lands with a different width), promote both to a shared token like `card-narrow` — but don't preemptively generalize. Rule: **one-off → stays a layout constant; two-off → becomes a token.**
+
+### Claude Code worktrees inherit ESLint config from parent directories
+**Where:** `.eslintrc.json` in every worktree under `.claude/worktrees/*`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** When Claude Code creates a worktree under `.claude/worktrees/<name>/`, ESLint walks upward looking for configs and picks up the parent repo's `.eslintrc.json` as well as the worktree's copy — causing a `Plugin "@next/next" was conflicted between ...` error and exit code 1. Fix by adding `"root": true` to the worktree's `.eslintrc.json` so ESLint stops climbing. Do this once per worktree (or bake it into the main `.eslintrc.json` so all future worktrees inherit correctly). Symptom-to-cause: any lint error that mentions two `.eslintrc.json` paths in the plugin conflict message is this.
+
+### NextAuth JWT type augmentation must target `@auth/core/jwt`, not `next-auth/jwt`
+**Where:** `src/types/next-auth.d.ts`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** `next-auth/jwt` in v5 is a pure re-export (`export * from "@auth/core/jwt"`), so `declare module 'next-auth/jwt' { interface JWT {...} }` is a no-op — the interface lives in `@auth/core/jwt` and must be augmented there. Symptom when wrong: `token.given_name` and other augmented fields resolve to `{} | null` or `unknown` (falling back to the `Record<string, unknown>` index signature JWT extends), not the `string | null` you declared. The `Session` augmentation via `declare module 'next-auth'` DOES work at the re-export level because `next-auth`'s own types define Session; only JWT requires drilling to `@auth/core/jwt`. Check the augmentation is live with a quick `const x: typeof token.given_name = null` — if TS accepts that and refuses `null as string | null`, the augmentation path is wrong.
+
+### `auth()` helper has dual role — session reader AND middleware
+**Where:** `src/auth.ts`, `src/middleware.ts`, any RSC calling `auth()`
+**Discovered:** 2026-04-19 (Phase 2)
+**Lesson:** In NextAuth v5, the same `auth` export from `NextAuth({...})` serves two roles: (a) imported by a Server Component or route handler, it reads the current session (`const session = await auth()`); (b) re-exported from `src/middleware.ts` as `export { auth as middleware }`, it runs as edge middleware with different call semantics (takes a `NextRequest`, returns a redirect/rewrite). Same symbol, different runtime. When debugging middleware, remember the auth helper is running in the Edge runtime — `process.env` reads work but node-only APIs don't, so anything `src/auth.ts` imports transitively (like `src/lib/env.ts` with Zod) must be Edge-compatible. Zod is fine; Databricks SQL client won't be — so don't pull DB code into the auth graph until we split data access out of the middleware path.
 
 ### Dropping a design token = multi-file rename, not a delete
 **Where:** `src/app/globals.css`, `tailwind.config.ts`, `src/lib/tokens.ts`, all components, docs/STYLE_GUIDE.md, docs/GOTCHAS.md

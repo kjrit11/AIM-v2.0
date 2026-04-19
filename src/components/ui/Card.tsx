@@ -5,17 +5,17 @@ import { cn } from '@/lib/cn';
  * Card primitive — STYLE_GUIDE §6.3
  * ===================================
  *
- * Standard visual container. Light surface, subtle border, slight shadow.
+ * Standard visual container. Near-black surface, hairline border, ring shadow.
  * No gradients, no heavier shadow by default.
  *
  * Interactive prop:
- *   - When `interactive`, adds hover background tint and cursor-pointer
+ *   - When `interactive`, swaps background to surface-hover and sets cursor-pointer
  *   - Does NOT change border color on hover (per STYLE_GUIDE)
  *   - Does NOT add onClick — caller provides it; this just signals interactivity
  *
  * Composition:
  *   - Card is a plain container. Card.Header / Card.Body / Card.Footer
- *     subcomponents can be added in Phase 2 when we have use cases that need them.
+ *     subcomponents can be added in Phase 2+ when we have use cases that need them.
  *     For now, callers compose with raw divs.
  */
 
@@ -40,7 +40,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           interactive && cn(
             'cursor-pointer',
             'transition-colors duration-150',
-            'hover:bg-bg-page'
+            'hover:bg-bg-surface-hover'
           ),
 
           // Caller overrides

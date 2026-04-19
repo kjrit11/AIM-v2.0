@@ -5,20 +5,20 @@ import { cn } from '@/lib/cn';
  * Button primitive — STYLE_GUIDE §6.1
  * =====================================
  *
- * Four variants: primary (Periwinkle), secondary (outlined), ghost, danger.
+ * Four variants: primary (indigo), secondary (outlined), ghost, danger.
  * Three sizes: sm (28px), md (36px, default), lg (44px).
  *
  * Visual rules:
  *   - Border radius: md (6px)
- *   - Font: body at md/lg, body-sm at sm
- *   - Hover: accent-hover (for primary) or tint shift
- *   - Focus: 2px accent ring, 2px offset (handled by globals.css *:focus-visible)
+ *   - Font: body (14px) at md/lg, caption (12px) at sm
+ *   - Weight: 500 across all variants/sizes
+ *   - Hover: accent-hover (primary) or surface-hover (secondary/ghost)
+ *   - Focus: 2px accent-hover ring, 2px offset (handled by globals.css *:focus-visible)
  *   - Disabled: 50% opacity, no pointer events
  *
  * Accessibility:
  *   - Uses native <button> for semantic correctness and keyboard support
  *   - Disabled state correctly blocks events
- *   - Loading state sets aria-busy
  *
  * Not yet included (Phase 2+):
  *   - Icon prefix/suffix composition
@@ -37,31 +37,31 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: cn(
-    'bg-accent text-white border-transparent',
+    'bg-accent text-text-primary border-transparent',
     'hover:bg-accent-hover',
-    'active:bg-accent-active'
+    'active:bg-accent-hover'
   ),
   secondary: cn(
-    'bg-bg-surface text-text-primary border-border-subtle',
-    'hover:bg-bg-page',
-    'active:bg-bg-page'
+    'bg-bg-surface text-text-strong border-border-subtle',
+    'hover:bg-bg-surface-hover',
+    'active:bg-bg-surface-hover'
   ),
   ghost: cn(
-    'bg-transparent text-text-primary border-transparent',
-    'hover:bg-bg-page',
-    'active:bg-bg-page'
+    'bg-transparent text-text-body border-transparent',
+    'hover:bg-bg-surface-hover hover:text-text-strong',
+    'active:bg-bg-surface-hover'
   ),
   danger: cn(
-    'bg-danger text-white border-transparent',
-    'hover:brightness-95',
-    'active:brightness-90'
+    'bg-danger-bg text-danger-fg border-transparent',
+    'hover:brightness-110',
+    'active:brightness-95'
   ),
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-7 px-3 text-body-sm',       // 28px
-  md: 'h-9 px-4 text-body',          // 36px
-  lg: 'h-11 px-5 text-body-lg',      // 44px
+  sm: 'h-7 px-3 text-caption',   // 28px
+  md: 'h-9 px-4 text-body',      // 36px
+  lg: 'h-11 px-5 text-body',     // 44px
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

@@ -2,12 +2,17 @@
  * AIM v2 — Global Styles
  * =======================
  *
- * Light-mode CSS variables (from docs/STYLE_GUIDE.md §2.11).
- * Dark mode deferred — when wired up, add `[data-theme="dark"] { ... }` block
- * with tokens from §2.12.
+ * Dark-first CSS variables from docs/STYLE_GUIDE.md §2 and §2.11.
+ * Light mode is deferred — see docs/DEFERRED.md.
  *
- * All components must reference these variables via Tailwind utility classes
- * (configured in tailwind.config.ts) rather than hardcoded values.
+ * All components reference these variables through Tailwind utility classes
+ * (configured in tailwind.config.ts) rather than hardcoded values. The only
+ * place hex values are allowed is in this file and in docs/STYLE_GUIDE.md.
+ *
+ * Fonts:
+ *   --font-sans and --font-mono are populated by next/font/google in
+ *   src/app/layout.tsx (Inter + JetBrains Mono). The fallback stacks below
+ *   render during font load / in environments without the next/font variables.
  */
 
 @tailwind base;
@@ -16,46 +21,55 @@
 
 @layer base {
   :root {
-    /* Fonts — populated by next/font/google in app/layout.tsx */
-    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-      'Segoe UI', Helvetica, Arial, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Fira Code',
-      Consolas, monospace;
+    /* Neutrals (9 stops — named by role, not number) */
+    --bg-page: #08080b;
+    --bg-sidebar: #0b0b0f;
+    --bg-surface: #101014;
+    --bg-surface-hover: #18181b;
+    --border-subtle: #1c1c21;
+    --border-strong: #27272a;
+    --text-muted: #52525b;
+    --text-secondary: #71717a;
+    --text-body: #a1a1aa;
+    --text-strong: #d4d4d8;
+    --text-primary: #fafafa;
 
-    /* Surfaces */
-    --bg-page: #f6f6fb;
-    --bg-panel: #f6f6fb;
-    --bg-surface: #ffffff;
+    /* Accent — indigo */
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --accent-subtle: #1e1b4b;
 
-    /* Text */
-    --text-primary: #1c1c38;
-    --text-secondary: #151744;
-    --text-tertiary: #6b6b9a;
-    --text-quaternary: #dddde8;
+    /* Semantic — foreground */
+    --success-fg: #4ade80;
+    --warning-fg: #fb923c;
+    --danger-fg: #f87171;
+    --info-fg: #60a5fa;
 
-    /* Brand + accent */
-    --brand: #151744;
-    --accent: #707cf2;
-    --accent-hover: #383392;
-    --accent-active: #383392;
+    /* Semantic — background */
+    --success-bg: #0f2419;
+    --warning-bg: #2a1810;
+    --danger-bg: #2a0f12;
+    --info-bg: #0c1f2e;
 
-    /* Semantic status */
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #f56e7b;
-    --info: #3b82f6;
+    /* Typography — fallbacks; layout.tsx replaces these via next/font */
+    --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 
-    /* Borders */
-    --border-primary: #707cf2;
-    --border-subtle: #dddde8;
-    --border-hairline: rgba(21, 23, 68, 0.08);
+    /* Scale */
+    --text-micro: 11px;
+    --text-caption: 12px;
+    --text-body-size: 14px;
+    --text-section: 16px;
+    --text-page: 20px;
+    --line-height-body: 1.5;
 
-    /* Shadows */
-    --shadow-ring: rgba(21, 23, 68, 0.08) 0px 0px 0px 1px;
-    --shadow-subtle: rgba(21, 23, 68, 0.04) 0px 2px 4px 0px;
-    --shadow-card: var(--shadow-ring), var(--shadow-subtle);
-    --shadow-elevated: var(--shadow-ring),
-      rgba(21, 23, 68, 0.06) 0px 4px 12px 0px;
+    /* Shadows — hairline on near-black reads as 1px border */
+    --shadow-ring: rgba(255, 255, 255, 0.04) 0px 0px 0px 1px;
+    --shadow-subtle: rgba(0, 0, 0, 0.32) 0px 2px 4px 0px;
+    --shadow-card: var(--shadow-ring);
+    --shadow-elevated:
+      var(--shadow-ring), rgba(0, 0, 0, 0.48) 0px 8px 24px 0px;
+    --shadow-inner: inset 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   }
 
   /* Base element resets — keep minimal, let components own their styling */
@@ -63,14 +77,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    color-scheme: dark;
   }
 
   body {
     background-color: var(--bg-page);
-    color: var(--text-primary);
+    color: var(--text-body);
     font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 20px;
+    font-size: var(--text-body-size);
+    line-height: var(--line-height-body);
     font-weight: 400;
   }
 
@@ -83,7 +98,7 @@
 
   /* Focus outline — accessible default, overridden per-component where needed */
   *:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-hover);
     outline-offset: 2px;
   }
 

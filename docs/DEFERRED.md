@@ -1,6 +1,6 @@
 # Deferred — AIM v2
 
-**Last updated:** 2026-04-18 (KB rationale updated post-schema-audit)
+**Last updated:** 2026-04-19 (light mode added — dark indigo pivot deferred light)
 
 Features and ideas that came up during v2 planning but were explicitly deferred to protect scope. These are not forgotten — they're parked.
 
@@ -11,6 +11,23 @@ Features and ideas that came up during v2 planning but were explicitly deferred 
 ---
 
 ## Deferred from initial planning
+
+### Light mode
+
+**Status:** Dark-only at Phase 2. The token system in `docs/STYLE_GUIDE.md` §2 and `src/app/globals.css` is dark-first; no `@media (prefers-color-scheme: light)`, no `.light` class, no inverted palette shim.
+
+**Why deferred:** The Phase 2 dark-indigo pivot (2026-04-19) replaced the CareInMotion periwinkle/coral mode-aware palette with a single indigo-on-near-black system. Keeping the old light mode would have required maintaining a translation layer between the two aesthetics — a week of work that buys nothing for internal desk users. External demos on projectors were the original argument for light mode; those are not happening before Phase 6 (Proposals) at earliest.
+
+**When to revisit:** Any of:
+- An external demo is scheduled and the projector washes out `#08080B` background.
+- Accessibility review flags dark-only as a blocker for a specific user.
+- v2.1 scope reopens for theming (unlikely before late 2026).
+
+When it returns, the light palette will be re-derived from the current dark tokens (not restored from the periwinkle/coral set — that palette is gone).
+
+**Rough estimate:** 1 session to derive the light palette, wire a toggle, and audit every primitive against it.
+
+---
 
 ### Knowledge Base UI
 

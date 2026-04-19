@@ -20,60 +20,64 @@ const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      // Colors — all reference CSS variables from globals.css
+      // Colors — every utility reads a CSS variable from globals.css.
+      // Structure mirrors STYLE_GUIDE.md §2 (neutrals / accent / semantic).
       colors: {
-        // Surfaces
-        'bg-page': 'var(--bg-page)',
-        'bg-panel': 'var(--bg-panel)',
-        'bg-surface': 'var(--bg-surface)',
+        // Neutral surfaces (bg-page, bg-sidebar, bg-surface, bg-surface-hover)
+        bg: {
+          page: 'var(--bg-page)',
+          sidebar: 'var(--bg-sidebar)',
+          surface: 'var(--bg-surface)',
+          'surface-hover': 'var(--bg-surface-hover)',
+        },
 
-        // Text
-        'text-primary': 'var(--text-primary)',
-        'text-secondary': 'var(--text-secondary)',
-        'text-tertiary': 'var(--text-tertiary)',
-        'text-quaternary': 'var(--text-quaternary)',
+        // Borders (border-subtle, border-strong)
+        border: {
+          subtle: 'var(--border-subtle)',
+          strong: 'var(--border-strong)',
+        },
 
-        // Brand + accent
-        brand: 'var(--brand)',
-        accent: 'var(--accent)',
-        'accent-hover': 'var(--accent-hover)',
-        'accent-active': 'var(--accent-active)',
+        // Text (text-muted, text-secondary, text-body, text-strong, text-primary)
+        text: {
+          muted: 'var(--text-muted)',
+          secondary: 'var(--text-secondary)',
+          body: 'var(--text-body)',
+          strong: 'var(--text-strong)',
+          primary: 'var(--text-primary)',
+        },
 
-        // Semantic status
-        success: 'var(--success)',
-        warning: 'var(--warning)',
-        danger: 'var(--danger)',
-        info: 'var(--info)',
+        // Accent — indigo (accent, accent-hover, accent-subtle)
+        accent: {
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          subtle: 'var(--accent-subtle)',
+        },
 
-        // Borders
-        'border-primary': 'var(--border-primary)',
-        'border-subtle': 'var(--border-subtle)',
-        'border-hairline': 'var(--border-hairline)',
+        // Semantic pairs — use fg/bg together
+        success: { fg: 'var(--success-fg)', bg: 'var(--success-bg)' },
+        warning: { fg: 'var(--warning-fg)', bg: 'var(--warning-bg)' },
+        danger: { fg: 'var(--danger-fg)', bg: 'var(--danger-bg)' },
+        info: { fg: 'var(--info-fg)', bg: 'var(--info-bg)' },
       },
 
-      // Typography
+      // Typography — Inter + JetBrains Mono wired via next/font in layout.tsx
       fontFamily: {
         sans: ['var(--font-sans)'],
         mono: ['var(--font-mono)'],
       },
 
+      // Scale — STYLE_GUIDE §3.2
       fontSize: {
-        // STYLE_GUIDE §3.2
-        'display-lg': ['48px', { lineHeight: '56px', letterSpacing: '-0.02em', fontWeight: '600' }],
-        h1: ['28px', { lineHeight: '36px', letterSpacing: '-0.01em', fontWeight: '600' }],
-        h2: ['22px', { lineHeight: '30px', letterSpacing: '-0.01em', fontWeight: '600' }],
-        h3: ['18px', { lineHeight: '26px', letterSpacing: '0', fontWeight: '600' }],
-        h4: ['15px', { lineHeight: '22px', letterSpacing: '0', fontWeight: '600' }],
-        'body-lg': ['16px', { lineHeight: '24px', fontWeight: '400' }],
-        body: ['14px', { lineHeight: '20px', fontWeight: '400' }],
-        'body-sm': ['13px', { lineHeight: '18px', fontWeight: '400' }],
-        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
-        mono: ['13px', { lineHeight: '18px', fontWeight: '400' }],
-        'mono-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }],
-        eyebrow: [
+        micro: [
           '11px',
           { lineHeight: '14px', letterSpacing: '0.06em', fontWeight: '500' },
         ],
+        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
+        body: ['14px', { lineHeight: '21px', fontWeight: '400' }],
+        section: ['16px', { lineHeight: '24px', fontWeight: '500' }],
+        'page-title': ['20px', { lineHeight: '28px', fontWeight: '500' }],
+        mono: ['13px', { lineHeight: '18px', fontWeight: '400' }],
+        'mono-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }],
       },
 
       // Spacing — 4px base, fully enumerated
@@ -109,6 +113,7 @@ const config: Config = {
         subtle: 'var(--shadow-subtle)',
         card: 'var(--shadow-card)',
         elevated: 'var(--shadow-elevated)',
+        inner: 'var(--shadow-inner)',
       },
 
       // Max width for page shells

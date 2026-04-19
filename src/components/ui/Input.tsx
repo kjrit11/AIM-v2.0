@@ -6,14 +6,14 @@ import { cn } from '@/lib/cn';
  * ====================================
  *
  * Single height (36px), single radius (md), single border treatment.
- * Error state flips border to danger red.
+ * Error state flips border and ring to semantic danger.
  *
  * Focus state:
- *   - Border turns accent
- *   - 3px ring at ~20% accent opacity
+ *   - Border turns border-strong
+ *   - 3px ring at ~20% accent-hover opacity (soft indigo halo)
  *
  * Not included here (Phase 2+):
- *   - Label composition (caller can wrap in <label> or use aria-labelledby)
+ *   - Label composition (caller wraps in <label> or uses aria-labelledby)
  *   - Prefix/suffix icons
  *   - Helper text rendering (caller responsibility for now)
  *
@@ -37,21 +37,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           // Shape + base
           'h-9 w-full px-3',
           'rounded-md border',
-          'bg-bg-surface text-text-primary',
+          'bg-bg-surface text-text-strong',
           'text-body',
           'transition-[border-color,box-shadow] duration-150',
 
           // Placeholder
-          'placeholder:text-text-quaternary',
+          'placeholder:text-text-muted',
 
           // Border state (default vs error)
-          error ? 'border-danger' : 'border-border-subtle',
+          error ? 'border-danger-fg' : 'border-border-subtle',
 
           // Focus — stronger ring via focus-visible, overrides the globals.css outline
           'focus-visible:outline-none',
           error
-            ? 'focus-visible:border-danger focus-visible:ring-2 focus-visible:ring-danger/20'
-            : 'focus-visible:border-accent focus-visible:ring-[3px] focus-visible:ring-accent/20',
+            ? 'focus-visible:border-danger-fg focus-visible:ring-2 focus-visible:ring-danger-fg/20'
+            : 'focus-visible:border-border-strong focus-visible:ring-[3px] focus-visible:ring-accent-hover/20',
 
           // Disabled
           'disabled:opacity-50 disabled:cursor-not-allowed',

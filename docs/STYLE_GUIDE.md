@@ -1,9 +1,8 @@
 # AIM v2 — Style Guide
 
-**Aesthetic target:** CareInMotion brand applied with Linear/Vercel-grade restraint. Branded, dense, dark-first.
+**Aesthetic target:** Linear/Vercel-grade dark indigo. Near-black surfaces, indigo accent used sparingly for primary actions, greyscale for everything else. Data uses paired semantic foreground/background pairs.
 **Owner:** Kevin Ritter, CareInMotion
-**Color source:** CareInMotion Brand & Document Style Guide v1.1 (March 2026)
-**Last updated:** 2026-04-18 (color palette swapped to CareInMotion brand; aesthetic principles preserved)
+**Last updated:** 2026-04-19 (Phase 2 pivot — CareInMotion periwinkle/coral palette replaced by dark indigo system; light mode deferred)
 
 This is the single source of truth for visual design. Every component, page, and token references this file. If you find yourself inventing a color, spacing value, or pattern not in this document — stop.
 
@@ -11,10 +10,10 @@ This is the single source of truth for visual design. Every component, page, and
 
 ## 1. Design principles
 
-1. **Restraint over decoration.** Color is information, not decoration. An indigo gradient is wrong. A Navy background with a Coral CTA is right.
+1. **Restraint over decoration.** Color is information, not decoration. An indigo gradient is wrong. A near-black surface with an indigo primary CTA is right.
 2. **Information density, handled with whitespace.** Sales tools are dense. Handle density with generous vertical rhythm and clear visual hierarchy, not by shrinking text.
-3. **One accent per screen.** The accent is Periwinkle in light mode, Coral in dark mode. Never two competing accents in the same view.
-4. **Dark is default; light is first-class.** The app opens in dark mode for internal users at desks. But external sales demos happen on bright projectors — light mode must look good, not merely work. Both modes are designed, both are reviewed, both ship.
+3. **One accent per screen.** Indigo `#6366F1` is the only accent. It is reserved for primary actions, focus rings, selected states, and brand moments. Never used to encode data — semantic tokens do that.
+4. **Dark-only at Phase 2.** Light mode is deferred (see §2 and `docs/DEFERRED.md`). The token system was rebuilt dark-first so a future light mode re-inverts these values rather than layering on top.
 5. **Motion is purposeful.** Fade and subtle slide only. No bounces, no spring physics, no stagger.
 6. **Mono typography signals data.** Numbers, IDs, timestamps, currency in mono. Everything else sans.
 
@@ -22,266 +21,132 @@ This is the single source of truth for visual design. Every component, page, and
 
 ## 2. Color tokens
 
-All colors come from the CareInMotion brand palette. No invention, no variant-on-a-variant, no "a little darker than Periwinkle."
+Dark-first, near-black neutrals, single indigo accent, paired semantic fg/bg for data. **Light mode is explicitly deferred** — see `docs/DEFERRED.md`. Revisit conditions: (a) external demo UX demands a projector-friendly mode, (b) accessibility review flags dark-only as a blocker, or (c) v2.1 scope reopens for theming. Until one of those lands, no `prefers-color-scheme: light` rules, no `.light` class, no inverted palette shim.
 
-### 2.1 Brand
+### 2.1 Neutrals (9 stops — named by role, not number)
 
-```typescript
-export const brand = {
-  navy:       '#151744',  // the brand itself — primary dark surface + brand accent
-  periwinkle: '#707CF2',  // light-mode accent, focus rings, links
-  purple:     '#383392',  // secondary brand surface, hover state on accent
-  coral:      '#F56E7B',  // dark-mode accent, critical alerts, attention
-};
+The neutral scale is what the app looks like 90% of the time. Every token is named by role so code reads like the design, not like `zinc-900`.
+
+| Token              | Hex      | Purpose                                     |
+|--------------------|----------|---------------------------------------------|
+| `bg-page`          | `#08080B` | Page background (app root)                 |
+| `bg-sidebar`       | `#0B0B0F` | Sidebar, topbar                            |
+| `bg-surface`       | `#101014` | Cards, inputs, table rows                  |
+| `bg-surface-hover` | `#18181B` | Hover states, active nav                   |
+| `border-subtle`    | `#1C1C21` | Default borders, dividers                  |
+| `border-strong`    | `#27272A` | Input focus, emphasis                      |
+| `text-muted`       | `#52525B` | Labels, section headers                    |
+| `text-secondary`   | `#71717A` | Timestamps, metadata                       |
+| `text-body`        | `#A1A1AA` | Body copy, inactive nav                    |
+| `text-strong`      | `#D4D4D8` | Table values, data                         |
+| `text-primary`     | `#FAFAFA` | Headings, active items                     |
+
+**Rule:** never hand-mix a shade between two stops. If two greys feel wrong next to each other, pick a different pair from the scale — don't invent a 12th stop.
+
+### 2.2 Accent — indigo
+
+Reserved for primary actions and brand moments only. **Never used to encode data** (use semantic tokens for that).
+
+| Token           | Hex      | Purpose                              |
+|-----------------|----------|--------------------------------------|
+| `accent`        | `#6366F1` | Primary buttons                     |
+| `accent-hover`  | `#818CF8` | Hover state, focus rings, links     |
+| `accent-subtle` | `#1E1B4B` | Badge backgrounds, subtle fills     |
+
+**Rule:** the accent is the single brand color. A screen with two indigo regions is a screen with no accent.
+
+### 2.3 Semantic (paired foreground/background — always used together)
+
+Semantic tokens ship as fg/bg pairs. The fg is the text/icon color, the bg is a low-saturation dark wash. Always paired — a bare fg on `bg-surface` reads as raw color; a bare bg with default text reads as broken. Use the pair.
+
+| Token     | fg        | bg        | Purpose                                              |
+|-----------|-----------|-----------|------------------------------------------------------|
+| `success` | `#4ADE80` | `#0F2419` | High win prob, healthy deals, closed-won             |
+| `warning` | `#FB923C` | `#2A1810` | Stalled deals, medium signal, margin alerts         |
+| `danger`  | `#F87171` | `#2A0F12` | At-risk deals, high signal intel, closed-lost       |
+| `info`    | `#60A5FA` | `#0C1F2E` | Neutral tags, in-progress, system messages          |
+
+**Rule:** status tokens never replace the accent. A "Closed-won" badge is success green, a "Submit proposal" button is indigo — not green, not warmer green, not the same green.
+
+### 2.4 What got dropped
+
+The CareInMotion periwinkle/coral/navy palette is out. `brand.navy`, `brand.periwinkle`, `brand.purple`, `brand.coral` are no longer tokens. The mode-aware accent (Periwinkle light → Coral dark) is out — single indigo accent in its place. The category tokens (Client/Sales/Prospect/Internal) are deferred until a concrete Notes/Tasks visual design lands in Phase 8; when they return, they'll be re-expressed in this new palette.
+
+### 2.5 Shadows
+
+Whisper-quiet. If a shadow is visible from across the room, it's wrong. On near-black, shadows mostly read as a 1px border.
+
+```css
+--shadow-ring:     rgba(255, 255, 255, 0.04) 0px 0px 0px 1px;
+--shadow-subtle:   rgba(0, 0, 0, 0.32) 0px 2px 4px 0px;
+--shadow-card:     var(--shadow-ring);
+--shadow-elevated: var(--shadow-ring), rgba(0, 0, 0, 0.48) 0px 8px 24px 0px;
+--shadow-inner:    inset 0 1px 2px 0 rgba(0, 0, 0, 0.40);
 ```
 
-### 2.2 Accent (mode-specific)
+Use `shadow-card` for default cards, `shadow-elevated` for modals, `shadow-ring` for hairline definition.
 
-The accent differs by mode — this is a deliberate brand choice.
+### 2.11 CSS variables — Dark (current)
 
-| Mode | Accent | Accent hover | Accent active |
-|---|---|---|---|
-| Light | Periwinkle `#707CF2` | Purple `#383392` | Purple `#383392` + inner shadow |
-| Dark | Coral `#F56E7B` | Coral darkened 8% | Coral darkened 12% + inner shadow |
-
-**Rule:** the accent is the only color for primary CTAs, focus rings, selected states, links. Wherever you'd reach for "brand blue" in a generic dashboard, use the accent for the current mode.
-
-### 2.3 Neutrals
-
-The CareInMotion palette doesn't name a full neutral scale, but these are the required greys for text, borders, and muted surfaces.
-
-```typescript
-export const neutral = {
-  // Dark-mode text
-  white:      '#FFFFFF',
-  ruleGray:   '#DDDDE8',
-  muted:      '#6B6B9A',
-
-  // Light-mode text
-  nearBlack:  '#1C1C38',
-
-  // Light-mode surfaces
-  offWhite:   '#F6F6FB',
-  paperWhite: '#FFFFFF',
-};
-```
-
-### 2.4 Status (semantic, never decorative)
-
-```typescript
-export const status = {
-  success: { fg: '#10B981', bg: 'rgba(16,185,129,0.10)',  border: '#10B981' }, // Emerald
-  warning: { fg: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  border: '#F59E0B' }, // Amber
-  danger:  { fg: '#F56E7B', bg: 'rgba(245,110,123,0.12)', border: '#F56E7B' }, // Coral
-  info:    { fg: '#3B82F6', bg: 'rgba(59,130,246,0.10)',  border: '#3B82F6' }, // Indigo-blue, tuned to not fight Periwinkle
-};
-```
-
-**Rule:** only use for status. A "success" badge next to a completed task is right. A green button just because green looks nice is wrong.
-
-### 2.5 Category tokens (mode-aware)
-
-Notes and some task badges use category color. The **left edge bar** carries the brand color; **badges** and **text accents** use muted tints. This keeps categories readable without overloading the page with brand color.
-
-```typescript
-export const category = {
-  client: {
-    light: { bar: '#10B981', badge: 'rgba(16,185,129,0.08)',  fg: '#0F766E' },   // Emerald
-    dark:  { bar: '#10B981', badge: 'rgba(16,185,129,0.14)',  fg: '#6EE7B7' },   // Same Emerald, lighter text
-  },
-  sales: {
-    light: { bar: '#383392', badge: 'rgba(56,51,146,0.08)',   fg: '#383392' },   // Purple (not Periwinkle — avoids accent conflict)
-    dark:  { bar: '#707CF2', badge: 'rgba(112,124,242,0.14)', fg: '#A5B0F6' },   // Periwinkle on dark for contrast
-  },
-  prospect: {
-    light: { bar: '#F56E7B', badge: 'rgba(245,110,123,0.08)', fg: '#B03040' },   // Coral
-    dark:  { bar: '#F56E7B', badge: 'rgba(245,110,123,0.14)', fg: '#FDA4AF' },   // Same Coral, lighter text
-  },
-  internal: {
-    light: { bar: '#6B6B9A', badge: 'rgba(107,107,154,0.08)', fg: '#52525B' },   // Muted gray — reads as "not branded"
-    dark:  { bar: '#DDDDE8', badge: 'rgba(221,221,232,0.10)', fg: '#DDDDE8' },   // Rule Gray — visible on Navy
-  },
-};
-```
-
-**Notes:**
-- **Sales = Purple in light mode, Periwinkle in dark.** This avoids having Sales-category content collide with the light-mode accent (which is also Periwinkle).
-- **Internal = Muted gray in light, Rule Gray in dark.** Navy on Navy would be invisible — Rule Gray reads as "neutral, un-branded" on dark surfaces.
-- All other category tokens stay consistent across modes.
-
-### 2.6 Surfaces
-
-```typescript
-export const surface = {
-  light: {
-    page:    '#F6F6FB',  // --bg-page
-    panel:   '#F6F6FB',  // --bg-panel (same as page for minimalism)
-    card:    '#FFFFFF',  // --bg-surface (cards sit above panels)
-  },
-  dark: {
-    root:    '#151744',  // --color-background / --color-card — Navy IS the app root
-    card:    '#151744',  // cards inherit root; distinguished by border only
-    elevated:'#383392',  // Purple for modals, popovers, elevated surfaces
-    muted:   '#383392',  // --color-muted
-  },
-};
-```
-
-**Key decision:** dark mode app root is Navy `#151744`, per the CareInMotion brand guide. Cards are the same Navy but distinguished by a 1px border. Elevated surfaces (modals, popovers) step up to Purple `#383392` to create layering.
-
-### 2.7 Text tokens
-
-```typescript
-export const text = {
-  light: {
-    primary:    '#1C1C38',  // body text, primary headings
-    secondary:  '#151744',  // section headings, labels
-    tertiary:   '#6B6B9A',  // captions, metadata, muted
-    quaternary: '#DDDDE8',  // disabled, placeholder
-  },
-  dark: {
-    primary:    '#FFFFFF',  // body text on Navy
-    secondary:  '#707CF2',  // section headings (Periwinkle reads well on Navy)
-    tertiary:   '#DDDDE8',  // captions, metadata
-    quaternary: '#6B6B9A',  // disabled, placeholder
-  },
-};
-```
-
-**Rule:** never use near-white for body text in light mode; never use raw `#333` or random greys. The 4-tier hierarchy is exhaustive.
-
-### 2.8 Borders and dividers
-
-```typescript
-export const border = {
-  light: {
-    primary:  '#707CF2',                      // strong borders — input focus, active selection
-    subtle:   '#DDDDE8',                      // default dividers, card borders
-    hairline: 'rgba(21, 23, 68, 0.08)',       // subtle 1px separators
-  },
-  dark: {
-    primary:   '#707CF2',                     // Periwinkle for strong borders
-    secondary: '#383392',                     // Purple for default dividers
-    tertiary:  '#6B6B9A',                     // muted dividers
-  },
-};
-```
-
-All borders are **1px**. Never 2px. Never dashed unless explicitly calling attention to something unusual (rare).
-
-### 2.9 Alpha tints (for hover halos, focus glows, badge backgrounds)
-
-```typescript
-export const tint = {
-  brand:         'rgba(21, 23, 68, 0.10)',       // Navy tint
-  accent:        'rgba(112, 124, 242, 0.10)',    // Periwinkle tint (light mode)
-  accentDark:    'rgba(245, 110, 123, 0.14)',    // Coral tint (dark mode)
-  emerald:       'rgba(16, 185, 129, 0.10)',     // Success tint
-  coralSubtle:   'rgba(245, 110, 123, 0.12)',    // Coral wash
-  coralFocus:    'rgba(245, 110, 123, 0.45)',    // Coral focus ring
-  whiteWashLow:  'rgba(255, 255, 255, 0.04)',    // Hover on dark
-  whiteWashMid:  'rgba(255, 255, 255, 0.08)',    // Active on dark
-  whiteWashHigh: 'rgba(255, 255, 255, 0.14)',    // Pressed on dark
-  placeholder:   'rgba(255, 255, 255, 0.30)',    // Input placeholder on dark
-};
-```
-
-### 2.10 Shadows
-
-Whisper-quiet. If a shadow is visible from across the room, it's wrong.
-
-```typescript
-export const shadow = {
-  ring:     'rgba(21, 23, 68, 0.08) 0px 0px 0px 1px',
-  subtle:   'rgba(21, 23, 68, 0.04) 0px 2px 4px 0px',
-  card:     'rgba(21, 23, 68, 0.08) 0px 0px 0px 1px, rgba(21, 23, 68, 0.04) 0px 2px 4px 0px',
-  elevated: 'rgba(21, 23, 68, 0.08) 0px 0px 0px 1px, rgba(21, 23, 68, 0.06) 0px 4px 12px 0px',
-  inner:    'inset 0 1px 2px 0 rgb(0 0 0 / 0.10)',  // pressed states
-};
-```
-
-In dark mode, shadows are almost invisible against Navy. Use `shadow.ring` (the 1px border-like shadow) instead.
-
-### 2.11 CSS variables — Light mode
+Paste exactly into `src/app/globals.css`. This block is the runtime source of truth; `src/lib/tokens.ts` mirrors it for TypeScript autocomplete but does not drive styles.
 
 ```css
 :root {
-  /* Surfaces */
-  --bg-page:     #F6F6FB;
-  --bg-panel:    #F6F6FB;
-  --bg-surface:  #FFFFFF;
+  /* Neutrals */
+  --bg-page:           #08080B;
+  --bg-sidebar:        #0B0B0F;
+  --bg-surface:        #101014;
+  --bg-surface-hover:  #18181B;
+  --border-subtle:     #1C1C21;
+  --border-strong:     #27272A;
+  --text-muted:        #52525B;
+  --text-secondary:    #71717A;
+  --text-body:         #A1A1AA;
+  --text-strong:       #D4D4D8;
+  --text-primary:      #FAFAFA;
 
-  /* Text */
-  --text-primary:    #1C1C38;
-  --text-secondary:  #151744;
-  --text-tertiary:   #6B6B9A;
-  --text-quaternary: #DDDDE8;
+  /* Accent */
+  --accent:            #6366F1;
+  --accent-hover:      #818CF8;
+  --accent-subtle:     #1E1B4B;
 
-  /* Brand + accent */
-  --brand:         #151744;
-  --accent:        #707CF2;
-  --accent-hover:  #383392;
-  --accent-active: #383392;
+  /* Semantic — foreground */
+  --success-fg:        #4ADE80;
+  --warning-fg:        #FB923C;
+  --danger-fg:         #F87171;
+  --info-fg:           #60A5FA;
 
-  /* Status */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --danger:  #F56E7B;
-  --info:    #3B82F6;
+  /* Semantic — background */
+  --success-bg:        #0F2419;
+  --warning-bg:        #2A1810;
+  --danger-bg:         #2A0F12;
+  --info-bg:           #0C1F2E;
 
-  /* Borders */
-  --border-primary:  #707CF2;
-  --border-subtle:   #DDDDE8;
-  --border-hairline: rgba(21, 23, 68, 0.08);
+  /* Typography */
+  --font-sans:         'Inter', -apple-system, system-ui, sans-serif;
+  --font-mono:         'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Scale */
+  --text-micro:        11px;
+  --text-caption:      12px;
+  --text-body-size:    14px;
+  --text-section:      16px;
+  --text-page:         20px;
+  --line-height-body:  1.5;
 
   /* Shadows */
-  --shadow-ring:     rgba(21, 23, 68, 0.08) 0px 0px 0px 1px;
-  --shadow-subtle:   rgba(21, 23, 68, 0.04) 0px 2px 4px 0px;
-  --shadow-card:     var(--shadow-ring), var(--shadow-subtle);
-  --shadow-elevated: var(--shadow-ring), rgba(21, 23, 68, 0.06) 0px 4px 12px 0px;
+  --shadow-ring:       rgba(255, 255, 255, 0.04) 0px 0px 0px 1px;
+  --shadow-subtle:     rgba(0, 0, 0, 0.32) 0px 2px 4px 0px;
+  --shadow-card:       var(--shadow-ring);
+  --shadow-elevated:   var(--shadow-ring), rgba(0, 0, 0, 0.48) 0px 8px 24px 0px;
 }
 ```
 
-### 2.12 CSS variables — Dark mode
+### 2.12 CSS variables — Light mode (deferred)
 
-```css
-[data-theme="dark"] {
-  /* Surfaces */
-  --bg-page:    #151744;   /* Navy root — the app */
-  --bg-panel:   #151744;
-  --bg-surface: #151744;   /* Cards same as root, distinguished by border */
-  --bg-elevated:#383392;   /* Modals, popovers, elevated panels — Purple */
+Light mode is explicitly deferred at Phase 2. Do NOT preserve `@media (prefers-color-scheme: light)` blocks or `.light` class rules in `globals.css`. When light mode returns, it will be re-derived from this dark token set (not restored from the old periwinkle/coral palette).
 
-  /* Text */
-  --text-primary:    #FFFFFF;
-  --text-secondary:  #707CF2;
-  --text-tertiary:   #DDDDE8;
-  --text-quaternary: #6B6B9A;
-
-  /* Brand + accent (note: accent flips to Coral on dark) */
-  --brand:         #151744;
-  --accent:        #F56E7B;   /* Coral — the dark-mode primary CTA */
-  --accent-hover:  #F0626F;   /* Coral -8% lightness */
-  --accent-active: #E75460;   /* Coral -12% lightness */
-
-  /* Status (same semantic fg; backgrounds adjusted for contrast) */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --danger:  #F56E7B;
-  --info:    #60A5FA;         /* lighter info blue on dark */
-
-  /* Borders */
-  --border-primary:   #707CF2;   /* Periwinkle strong borders */
-  --border-secondary: #383392;   /* Purple default dividers */
-  --border-subtle:    #383392;
-
-  /* Shadows are minimal on dark; use ring borders instead */
-  --shadow-ring:     rgba(255, 255, 255, 0.06) 0px 0px 0px 1px;
-  --shadow-subtle:   none;
-  --shadow-card:     var(--shadow-ring);
-  --shadow-elevated: var(--shadow-ring), rgba(0, 0, 0, 0.32) 0px 8px 24px 0px;
-}
-```
+See `docs/DEFERRED.md` § "Light mode" for revisit conditions.
 
 ---
 
@@ -291,48 +156,46 @@ In dark mode, shadows are almost invisible against Navy. Use `shadow.ring` (the 
 
 ```typescript
 export const fonts = {
-  sans: 'Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
-  mono: '"Geist Mono", "JetBrains Mono", "Fira Code", Consolas, monospace',
+  sans: "'Inter', -apple-system, system-ui, sans-serif",
+  mono: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
 };
 ```
 
-One family. Geist first, Inter fallback. The old Montserrat / Open Sans / JetBrains Mono mixed stack is gone.
+Two families, both loaded via `next/font/google` in `src/app/layout.tsx`. Inter handles all UI chrome and content; JetBrains Mono handles data (numbers, IDs, timestamps, currency). The old Geist stack is gone.
 
 ### 3.2 Scale
 
+The scale is deliberately smaller than the previous system. Body is 14px (not 13px, which we tried and rejected — too tight for the proposal and intel feed views). Headings step down by weight as much as by size.
+
 ```typescript
 export const type = {
-  // Display (rare — only empty states or marketing surfaces, of which we have none today)
-  'display-lg': { size: '48px', lineHeight: '56px', weight: 600, tracking: '-0.02em' },
-
   // Page titles
-  'h1': { size: '28px', lineHeight: '36px', weight: 600, tracking: '-0.01em' },
-  'h2': { size: '22px', lineHeight: '30px', weight: 600, tracking: '-0.01em' },
-  'h3': { size: '18px', lineHeight: '26px', weight: 600, tracking: '0'      },
-  'h4': { size: '15px', lineHeight: '22px', weight: 600, tracking: '0'      },
+  'page-title': { size: '20px', lineHeight: '28px', weight: 500 },    // h1 — one per page
+  'section':    { size: '16px', lineHeight: '24px', weight: 500 },    // h2 — section headers
 
   // Body
-  'body-lg': { size: '16px', lineHeight: '24px', weight: 400 },
-  'body':    { size: '14px', lineHeight: '20px', weight: 400 },  // default body
-  'body-sm': { size: '13px', lineHeight: '18px', weight: 400 },
-  'caption': { size: '12px', lineHeight: '16px', weight: 400 },
-
-  // Mono (data)
-  'mono':    { size: '13px', lineHeight: '18px', weight: 400, family: 'mono' },
-  'mono-sm': { size: '12px', lineHeight: '16px', weight: 400, family: 'mono' },
+  'body':       { size: '14px', lineHeight: '21px', weight: 400 },    // default body (1.5 line-height)
+  'caption':    { size: '12px', lineHeight: '16px', weight: 400 },    // small, metadata
 
   // Micro (labels, eyebrows — use sparingly)
-  'eyebrow': { size: '11px', lineHeight: '14px', weight: 500, tracking: '0.06em', transform: 'uppercase' },
+  'micro':      { size: '11px', lineHeight: '14px', weight: 500, tracking: '0.06em', transform: 'uppercase' },
+
+  // Mono (data) — no separate size, inherits from context
+  'mono':       { family: 'mono', size: '13px', lineHeight: '18px', weight: 400 },
+  'mono-sm':    { family: 'mono', size: '12px', lineHeight: '16px', weight: 400 },
 };
 ```
 
+CSS variable names (also exported in `--text-*`): `--text-micro: 11px`, `--text-caption: 12px`, `--text-body-size: 14px`, `--text-section: 16px`, `--text-page: 20px`. `--line-height-body: 1.5`.
+
 ### 3.3 Usage rules
 
-- Page titles are `h1` — one per page.
-- Section headers are `h3` — never skip from `h1` to `h4`.
-- Body copy is `body` (14px) — not 16px. Sales tools benefit from tighter text.
+- Page titles are `page-title` (20px / weight 500) — one per page.
+- Section headers are `section` (16px / weight 500) — skip levels freely, no forced h1→h3 chain.
+- Body copy is `body` (14px) — the explicit choice over 13px. Text-heavy views (proposals, intel feed) need the extra breathing room.
 - Numbers in tables, pricing, IDs, timestamps, currency: `mono` family.
-- Eyebrow labels (e.g., "PIPELINE") are `eyebrow` with uppercase — use sparingly. Not every section header wants an eyebrow.
+- Micro labels (e.g., "PIPELINE") are `micro` (11px, uppercase, 0.06em tracking). Use sparingly; not every section wants an eyebrow.
+- Weights in play: 400 (body), 500 (headings + micro). No 600, no 700. This is a deliberate restraint — the palette carries the hierarchy, the weight doesn't need to.
 
 ---
 
@@ -385,9 +248,9 @@ export const borderWidth = {
 };
 ```
 
-All borders use `var(--border-subtle)` or `var(--border-primary)` from §2. Never hardcode a border color.
+All borders use `var(--border-subtle)` or `var(--border-strong)` from §2. Never hardcode a border color.
 
-Shadows are defined in §2.10. Use `shadow.card` for default cards, `shadow.elevated` for modals, `shadow.ring` for subtle definition especially on dark mode.
+Shadows are defined in §2.5. Use `shadow-card` for default cards, `shadow-elevated` for modals, `shadow-ring` for hairline definition.
 
 ---
 
@@ -396,24 +259,24 @@ Shadows are defined in §2.10. Use `shadow.card` for default cards, `shadow.elev
 ### 6.1 Button
 
 ```
-Size       Height    Padding-X    Font         Radius
-sm         28px      12px         body-sm      md
-md         36px      16px         body         md   ← default
-lg         44px      20px         body-lg      md
+Size       Height    Padding-X    Font                       Radius
+sm         28px      12px         caption (12px / weight 500) md
+md         36px      16px         body    (14px / weight 500) md   ← default
+lg         44px      20px         body    (14px / weight 500) md
 
 Variants:
-primary    --accent bg, white text, no border
-secondary  var(--bg-surface) bg, --text-primary, 1px var(--border-subtle) border
-ghost      transparent, --text-primary, no border, var(--tint.whiteWashLow) bg on hover
-danger     --danger bg, white text
+primary    --accent bg, --text-primary fg, no border
+secondary  var(--bg-surface) bg, var(--text-strong) fg, 1px var(--border-subtle) border
+ghost      transparent, var(--text-body) fg, no border, var(--bg-surface-hover) bg on hover
+danger     var(--danger-bg) bg, var(--danger-fg) fg, no border
 
-Hover:     -4% lightness on bg (or use --accent-hover for primary)
-Active:    -8% lightness + shadow.inner (or --accent-active for primary)
-Focus:     2px --accent ring, 2px offset
+Hover:     var(--bg-surface-hover) for secondary/ghost; --accent-hover for primary
+Active:    var(--bg-surface-hover) + shadow-inner for secondary/ghost; --accent primary stays on hover color
+Focus:     2px var(--accent-hover) ring, 2px offset (inherited from globals.css)
 Disabled:  50% opacity, no hover state
 ```
 
-Primary button is Periwinkle on light, Coral on dark — the `--accent` CSS variable handles this automatically.
+Primary button is indigo `#6366F1` — the `--accent` CSS variable.
 
 ### 6.2 Input / Textarea
 
@@ -423,16 +286,16 @@ Padding:     space.3 (12px)
 Border:      1px solid var(--border-subtle)
 Radius:      md (6px)
 Background:  var(--bg-surface)
-Font:        body
-Placeholder: --text-quaternary
+Font:        14px body, var(--text-primary)
+Placeholder: var(--text-muted)
 
 Focus:
-  border: 1px solid var(--accent)
-  ring:   3px var(--accent) at 20% opacity (3px outer glow)
+  border: 1px solid var(--border-strong)
+  ring:   3px var(--accent-hover) at 20% opacity (3px outer glow)
 
 Error:
-  border:      1px solid var(--danger)
-  helper text: var(--danger), body-sm
+  border:      1px solid var(--danger-fg)
+  helper text: var(--danger-fg), 12px caption
 ```
 
 ### 6.3 Card
@@ -442,32 +305,32 @@ Background: var(--bg-surface)
 Border:     1px solid var(--border-subtle)
 Radius:     lg (8px)
 Padding:    space.5 (20px)
-Shadow:     var(--shadow-card) — subtle 1px ring + light shadow on light mode; just ring on dark
+Shadow:     var(--shadow-card) — hairline ring on near-black
 
 NO gradient backgrounds.
 NO shadow heavier than card by default.
 ```
 
-Interactive cards (hover states): subtle background tint (`--tint.whiteWashLow` on dark, `--tint.brand` at 4% on light). No border color change.
+Interactive cards (hover states): swap bg to `var(--bg-surface-hover)`. No border color change.
 
 ### 6.4 Dialog
 
 ```
-Background: var(--bg-elevated)        [dark mode: Purple; light mode: surface]
+Background: var(--bg-surface)
 Border:     1px solid var(--border-subtle)
 Radius:     xl (12px)
 Padding:    space.6 (24px)
 Close btn:  top-right, 32x32, ghost variant
 Shadow:     var(--shadow-elevated)
 Animation:  fade 150ms + subtle scale 0.98 → 1.0
-Backdrop:   rgba(21, 23, 68, 0.60) on light; rgba(0, 0, 0, 0.60) on dark
+Backdrop:   rgba(0, 0, 0, 0.60)
 ```
 
 ### 6.5 Sidebar
 
 ```
 Width:      240px (desktop); collapses to 64px with icons only
-Background: var(--bg-panel)
+Background: var(--bg-sidebar)
 Border:     1px solid var(--border-subtle) on right edge
 Padding:    space.4 top/bottom, space.2 horizontal
 
@@ -475,17 +338,17 @@ Nav item:
   Height:   36px
   Padding:  space.3 horizontal
   Radius:   md
-  Color:    var(--text-tertiary)
+  Color:    var(--text-body)
   Icon:     16px, stroke 1.5
   Gap:      space.3 between icon and label
 
 Active:
-  bg:       var(--tint.whiteWashMid) on dark; var(--tint.brand) on light
+  bg:       var(--bg-surface-hover)
   color:    var(--text-primary)
   NO left accent bar, NO colored background beyond the subtle tint.
 
 Hover (inactive):
-  bg: var(--tint.whiteWashLow) on dark; var(--border-hairline) on light
+  bg: var(--bg-surface-hover) at 60% opacity (or fully-opaque if the elevation is subtle enough)
 ```
 
 Sidebar is intentionally restrained — no colorful active indicators. The subtle bg tint is enough.
@@ -496,19 +359,19 @@ Sidebar is intentionally restrained — no colorful active indicators. The subtl
 Height:   20px
 Padding:  0 space.2 (8px)
 Radius:   sm (4px)
-Font:     caption (12px), weight 500
+Font:     12px caption, weight 500
 Tracking: 0.02em
 
 Variants:
-neutral    var(--tint.brand) bg, --text-secondary
-accent     var(--tint.accent) bg, --accent fg
-success    var(--tint.emerald) bg, var(--success) fg
-warning    var(--status.warning.bg) bg, var(--warning) fg
-danger     var(--tint.coralSubtle) bg, var(--danger) fg
-info       var(--status.info.bg) bg, var(--info) fg
+neutral    var(--bg-surface-hover) bg, var(--text-body)
+accent     var(--accent-subtle) bg, var(--accent-hover) fg
+success    var(--success-bg) bg, var(--success-fg) fg
+warning    var(--warning-bg) bg, var(--warning-fg) fg
+danger     var(--danger-bg) bg, var(--danger-fg) fg
+info       var(--info-bg) bg, var(--info-fg) fg
 ```
 
-Category badges (Client / Sales / Prospect / Internal) use the `category` tokens from §2.5, with the mode-aware mapping.
+Category badges (Client / Sales / Prospect / Internal) are deferred until Phase 8 Notes & Tasks visual design resolves (see §2.4).
 
 ### 6.7 Category bar (new — specific to note cards, task rows)
 
@@ -532,7 +395,7 @@ On a note card, the rest of the card uses the default `--bg-surface`. The bar is
 - **Sizes:** 14, 16, 20, 24. No others.
 - **Color:** inherit from parent text color. Icons are not decorative accents.
 
-On dark mode, icons sit on Navy — stroke 1.5 keeps them legible without competing with text.
+Icons sit on near-black surfaces — stroke 1.5 keeps them legible without competing with text.
 
 ---
 
@@ -546,8 +409,8 @@ On dark mode, icons sit on Navy — stroke 1.5 keeps them legible without compet
 ├────────┬────────────────────────────────────────┤
 │        │ PageHeader (space.6 padding)           │
 │ Side   │ ┌────────────────────────────────────┐ │
-│ bar    │ │ h1 title          [actions → →]   │ │
-│ 240px  │ │ body-sm description                │ │
+│ bar    │ │ page-title        [actions → →]   │ │
+│ 240px  │ │ body description                   │ │
 │        │ └────────────────────────────────────┘ │
 │        │                                        │
 │        │ Main content (max-w-1280, centered)   │
@@ -652,28 +515,30 @@ If motion is noticeable, it's wrong. It should feel instant.
 ```typescript
 export const chartDefaults = {
   colors: [
-    '#707CF2',  // Periwinkle (primary series)
-    '#6B6B9A',  // Muted (secondary)
-    '#10B981',  // Emerald (tertiary)
-    '#F56E7B',  // Coral (quaternary — status-like)
+    'var(--accent)',        // Indigo — primary series
+    'var(--text-body)',     // Zinc 400 — secondary
+    'var(--success-fg)',    // Green — tertiary (only when data is inherently "good")
+    'var(--warning-fg)',    // Amber — quaternary (only when data is inherently "alert")
   ],
   grid: {
     stroke: 'var(--border-subtle)',
     strokeDasharray: '0',  // solid, not dashed
   },
   axis: {
-    stroke: 'var(--text-tertiary)',
+    stroke: 'var(--text-secondary)',
     fontSize: 12,
-    fontFamily: fonts.mono,
+    fontFamily: "var(--font-mono)",
   },
   tooltip: {
-    background:   'var(--bg-elevated)',
+    background:   'var(--bg-surface)',
     border:       '1px solid var(--border-subtle)',
-    borderRadius: radius.md,
+    borderRadius: '6px',
     fontSize:     13,
   },
 };
 ```
+
+**Rule:** the indigo accent is the only brand color in charts. Reach for semantic colors only when the data is inherently good/bad/alert — not as a decorative palette.
 
 ### Rules
 
@@ -694,9 +559,9 @@ Every list view has a designed empty state. Never an empty page.
 │                                     │
 │            [16x16 icon]             │
 │                                     │
-│         h3: "No opportunities"      │
+│    section: "No opportunities"      │
 │                                     │
-│   body-sm tertiary: "Create your    │
+│   body text-body: "Create your      │
 │   first opportunity to start        │
 │   tracking deals."                  │
 │                                     │
@@ -709,14 +574,9 @@ Illustration is optional — typographic empty states are fine and often cleaner
 
 ---
 
-## 12. Theme toggle
+## 12. Theme toggle — deferred
 
-- **Default: dark.** The app opens in dark mode for every new user. No flash of light content on load.
-- Toggle lives in the top bar, next to the user avatar.
-- `prefers-color-scheme` is **ignored** on first load — we default to dark regardless of OS.
-- User selection persists in `localStorage` under `aim:theme`. Once a user chooses light, respect it.
-- Initial HTML has `data-theme="dark"` server-side to prevent flash.
-- Before every external demo, verify the demo will happen in light mode (better on projectors). This is a checklist item, not a technical change.
+Light mode is deferred (see §2 and `docs/DEFERRED.md`). No toggle, no `prefers-color-scheme` handling, no `localStorage` persistence at Phase 2. The app is dark-only; when light mode returns, a toggle + persistence lands with it.
 
 ---
 
@@ -724,7 +584,7 @@ Illustration is optional — typographic empty states are fine and often cleaner
 
 - Every interactive element: 2px focus ring, 2px offset, `var(--accent)` color.
 - Every icon button: `aria-label`.
-- Color contrast: 4.5:1 for body text, 3:1 for large text. Verify with a checker — especially on dark mode where Navy + Periwinkle approaches the limit for small text.
+- Color contrast: 4.5:1 for body text, 3:1 for large text. Verify with a checker — `text-body` (`#A1A1AA`) on `bg-page` (`#08080B`) passes 4.5:1; `text-muted` (`#52525B`) does not and is reserved for large text or labels.
 - Never use color alone to convey status — pair with icon or text.
 - Keyboard: tab order follows visual order; dialogs trap focus; `Esc` closes modals.
 

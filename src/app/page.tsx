@@ -13,15 +13,15 @@ import Link from 'next/link';
 export default function HomePage() {
   return (
     <main className="mx-auto max-w-page px-6 py-8">
-      <h1 className="text-h1 text-text-primary mb-2">AIM v2</h1>
-      <p className="text-body-lg text-text-tertiary mb-10">
-        Phase 1 scaffold — design system only. No auth, no data.
+      <h1 className="text-page-title text-text-primary mb-2">AIM v2</h1>
+      <p className="text-body text-text-body mb-10">
+        Phase 2 scaffold — dark indigo design system. No auth, no data yet.
       </p>
 
       <div className="flex flex-col gap-3">
         <Link
           href="/design"
-          className="text-accent hover:text-accent-hover underline underline-offset-4"
+          className="text-accent-hover underline underline-offset-4 hover:text-accent"
         >
           → Component gallery (/design)
         </Link>

@@ -1,6 +1,6 @@
 # Gotchas — AIM v2
 
-**Last updated:** 2026-04-18 (schema audit findings added)
+**Last updated:** 2026-04-19 (Phase 2 dark indigo pivot — next/font dual-family, Tailwind `bg-bg-*` nesting, semantic pair rule)
 
 Running list of non-obvious things you need to know before touching specific tables, patterns, or integrations. Appended to at the end of every session where a new gotcha is discovered.
 
@@ -124,7 +124,20 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 
 ## v2-specific (accumulated as we build)
 
-*(Nothing yet. Add entries as they're learned.)*
+### `next/font/google` loads one family per import, mount both on `<html>`
+**Where:** `src/app/layout.tsx`
+**Discovered:** 2026-04-19 (Phase 2 dark indigo pivot)
+**Lesson:** `next/font/google` is invoked once per family. To get Inter (sans) + JetBrains Mono (mono) both powering CSS variables, call both loaders at module scope and mount `inter.variable` and `jetbrainsMono.variable` together in the `<html>` `className`. Don't try to combine them into a single export — each call returns its own `.variable` class that scopes one CSS property (`--font-sans` and `--font-mono` in our case). Request only the weights you use (400 for body/mono, 500 for Inter headings) — requesting all weights doubles the download for no gain.
+
+### Tailwind nested color keys generate `bg-bg-*` utilities
+**Where:** `tailwind.config.ts` `theme.extend.colors`
+**Discovered:** 2026-04-19 (Phase 2 dark indigo pivot)
+**Lesson:** Defining `colors: { bg: { page: 'var(--bg-page)' } }` produces utilities like `bg-bg-page` (the outer `bg-` is Tailwind's background-color prefix, the inner `bg-page` is the color name). Likewise `text-text-primary`, `border-border-subtle`. Looks redundant but it's the intended shape — the alternative (flattening to `bg-page: { DEFAULT: 'var(...)' }` at the top level) loses the semantic grouping. Live with the doubled prefix; don't try to "fix" it by un-nesting.
+
+### Semantic tokens ship as fg/bg pairs, never bare
+**Where:** `src/app/globals.css`, `tailwind.config.ts`, all components using semantic colors
+**Discovered:** 2026-04-19 (Phase 2 dark indigo pivot)
+**Lesson:** Each semantic token (`success`, `warning`, `danger`, `info`) is a `{ fg, bg }` pair — there is no `bg-danger` or `text-danger` utility. Use `bg-danger-bg` + `text-danger-fg` together. The pair is the design contract: fg without bg reads as raw color, bg without fg reads as broken. An input's error border uses `border-danger-fg` (the fg carries outside the pair because a 1px line needs the punchy color); a badge uses both. When writing a new component, ask "is this a block or a line?" — blocks use the pair, lines use fg.
 
 ---
 

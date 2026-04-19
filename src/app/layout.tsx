@@ -1,19 +1,38 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
  * Root layout — AIM v2
  * =====================
  *
- * Wires Geist (sans + mono) via next/font/google. The --font-sans and
- * --font-mono CSS variables get populated automatically by the className
- * on the <html> element.
+ * Loads Inter (sans) and JetBrains Mono (mono) via next/font/google.
+ * Both families expose CSS variables that override the fallback stacks
+ * declared in globals.css.
  *
- * No shell chrome (sidebar, top bar, etc.) in Phase 1 — that's Phase 2
- * when we wire auth and the authenticated app shell.
+ * Two font families loaded concurrently — acceptable cost because:
+ *  - Each family is loaded with `subsets: ['latin']` only
+ *  - Only the weights we use (400 / 500 for Inter, 400 for mono) are requested
+ *  - `display: 'swap'` avoids FOIT; the zinc-grey body text takes over
+ *    cleanly during the first ~100ms of font load
+ *
+ * data-theme is not set: the app is dark-only at Phase 2 (light mode deferred,
+ * see docs/DEFERRED.md).
  */
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'AIM — AlignInMotion',
@@ -28,13 +47,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable}`}
-      style={{
-        // Inject Geist into our CSS variable names used in globals.css
-        // (next/font/google exposes its own --font-geist-sans etc.; we re-alias here)
-        ['--font-sans' as string]: `var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif`,
-        ['--font-mono' as string]: `var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace`,
-      }}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>{children}</body>
     </html>

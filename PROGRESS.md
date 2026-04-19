@@ -80,7 +80,7 @@
 - ✓ `docs/GOTCHAS.md` — new entry "Dropping a design token = multi-file rename, not a delete"
 - ✓ Zero `#` hex values in `src/components/` or `src/app/` outside `globals.css` variable definitions
 
-### Phase 2 — Auth + app shell (2026-04-19, `<pending commit>`)
+### Phase 2 — Auth + app shell (2026-04-19, 7d82dd6)
 
 - ✓ `next-auth@5.0.0-beta.31` + `zod@4.3.6` installed; `npm ls` confirms 5.x
 - ✓ `src/lib/env.ts` — Zod-validated startup env check for the 5 NEXTAUTH_* / AZURE_AD_* vars (crash fast with per-var messaging)

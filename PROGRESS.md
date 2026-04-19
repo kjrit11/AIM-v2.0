@@ -1,12 +1,12 @@
 # AIM v2 — Progress
 
-**Last updated:** 2026-04-19 (Phase 2 dark indigo pivot applied to Phase 1 files)
+**Last updated:** 2026-04-19 (Phase 1.5 design-system cleanup — text tiers collapsed, danger variant pinned, input error pattern locked)
 
 ---
 
 ## Current phase
 
-**Phase 2 — Design system pivot (dark indigo)** complete. Phase 1 file generation + local execution still in flight (same blockers as before: scaffold not yet run locally).
+**Phase 1.5 — Design system cleanup** complete. Phase 1 file generation + local execution still in flight (same blockers as before: scaffold not yet run locally).
 
 ---
 
@@ -65,6 +65,21 @@
 
 **Verification (typecheck / lint / build):** not executable in this session — the Phase 1 scaffold (`scripts/phase-1-init.sh`) has not been run locally, so there is no `package.json` / `node_modules` to drive `npm` commands. Exit code 127 on all three with ENOENT for `package.json`. This is the same state this repo was in before the pivot; running the init script is a gating step before any build verification is possible.
 
+### Phase 1.5 — Design system cleanup (2026-04-19)
+
+- ✓ Text tiers collapsed from 5 → 3 (`text-muted` / `text-body` / `text-primary`); `text-secondary` + `text-strong` dropped
+- ✓ `--text-muted` absorbed `secondary` hex (`#71717A`); old muted `#52525B` retired
+- ✓ Full-repo grep sweep: zero residual `text-secondary` / `text-strong` / `--text-secondary` / `--text-strong` references across `.md`, `.tsx`, `.ts`, `.css`
+- ✓ CSS vars pruned (`src/app/globals.css`), typed tokens (`src/lib/tokens.ts`) and Tailwind config (`tailwind.config.ts`) regenerated to 3-tier
+- ✓ Button `secondary` fg → `text-text-body` (font-medium already in base); ghost hover fg → `text-text-primary` (preserves hover lift)
+- ✓ Button `danger` variant verified on semantic tokens (`bg-danger-bg text-danger-fg`); never `accent`
+- ✓ Input typed value fg → `text-text-body` (hierarchy: muted placeholder → body typed → primary label)
+- ✓ Input error pattern canonicalized as "lines, not blocks" — `border-danger-fg` + `text-danger-fg` helper + `ring-danger-fg/20` focus; no `bg-danger-bg` fill
+- ✓ `/design` gallery: two dropped swatches removed, three remaining text swatches gained usage labels, Input error renders to spec
+- ✓ STYLE_GUIDE updates: §2.1 neutrals table (3 tiers, 9 stops), §2.11 CSS var block, §3 proposal-scale disclaimer + new §3.4 concrete usage table, §6.1 Button variant color reference block, §6.2 Input error prose, §10 chart axis stroke (`--text-muted`)
+- ✓ `docs/GOTCHAS.md` — new entry "Dropping a design token = multi-file rename, not a delete"
+- ✓ Zero `#` hex values in `src/components/` or `src/app/` outside `globals.css` variable definitions
+
 ---
 
 ## In flight
@@ -84,7 +99,7 @@
 
 ## Queued — top 3 for next phase
 
-1. **Phase 2 — Auth + app shell** (Entra ID SSO). First phase with actual user-facing behavior. Authenticated routes, sign-in page, app chrome (sidebar + top bar). Starts on top of the Phase 1/2 dark-indigo design system.
+1. **Phase 2 — Auth + app shell** (Entra ID SSO). First phase with actual user-facing behavior. Authenticated routes, sign-in page, app chrome (sidebar + top bar). Starts on top of the Phase 1/1.5 dark-indigo design system (3-tier text, pinned danger variant, canonical input-error pattern).
 
 2. **Phase 3 — Data layer** (Databricks SQL connection, migration runner, repository pattern, observability). Wave 2 migrations (005 rename deals→opportunities, 006 create leads) run here through the first-party runner.
 

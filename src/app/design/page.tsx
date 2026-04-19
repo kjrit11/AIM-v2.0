@@ -57,7 +57,7 @@ export default function DesignGalleryPage() {
           </div>
           <div>
             <p className="text-micro text-text-muted mb-1">caption (12/16 · 400)</p>
-            <div className="text-caption text-text-secondary">
+            <div className="text-caption text-text-muted">
               The quick brown fox jumps over the lazy dog
             </div>
           </div>
@@ -71,13 +71,13 @@ export default function DesignGalleryPage() {
           </div>
           <div>
             <p className="text-micro text-text-muted mb-1">mono (13/18 · 400)</p>
-            <div className="font-mono text-mono text-text-strong">
+            <div className="font-mono text-mono text-text-body font-medium">
               $127,450.00 · deal-0042 · 2026-04-19T14:32Z
             </div>
           </div>
           <div>
             <p className="text-micro text-text-muted mb-1">mono-sm (12/16 · 400)</p>
-            <div className="font-mono text-mono-sm text-text-strong">
+            <div className="font-mono text-mono-sm text-text-body font-medium">
               user_id=6f8a1c · lat=48ms
             </div>
           </div>
@@ -118,22 +118,23 @@ export default function DesignGalleryPage() {
             cssVar="--border-strong"
             border
           />
-          <Swatch color="bg-text-muted" label="text-muted" cssVar="--text-muted" />
           <Swatch
-            color="bg-text-secondary"
-            label="text-secondary"
-            cssVar="--text-secondary"
+            color="bg-text-muted"
+            label="text-muted"
+            cssVar="--text-muted"
+            usage="Labels, timestamps, metadata, captions, disabled"
           />
-          <Swatch color="bg-text-body" label="text-body" cssVar="--text-body" />
           <Swatch
-            color="bg-text-strong"
-            label="text-strong"
-            cssVar="--text-strong"
+            color="bg-text-body"
+            label="text-body"
+            cssVar="--text-body"
+            usage="Body copy, inactive nav, table text"
           />
           <Swatch
             color="bg-text-primary"
             label="text-primary"
             cssVar="--text-primary"
+            usage="Headings, active items, emphasized values"
           />
         </div>
       </Section>
@@ -154,7 +155,7 @@ export default function DesignGalleryPage() {
             border
           />
         </div>
-        <p className="text-caption text-text-secondary mt-4">
+        <p className="text-caption text-text-muted mt-4">
           Reserved for primary buttons, focus rings, links, and brand
           moments. Never used to encode data — semantic tokens do that.
         </p>
@@ -312,7 +313,7 @@ export default function DesignGalleryPage() {
             <h3 className="text-section text-text-primary mb-2">Hover me</h3>
             <p className="text-body text-text-body">
               Hover tint via{' '}
-              <code className="font-mono text-mono-sm text-text-strong">
+              <code className="font-mono text-mono-sm text-text-primary">
                 interactive
               </code>{' '}
               prop. Background steps up to bg-surface-hover; border stays.
@@ -372,11 +373,13 @@ function Swatch({
   label,
   cssVar,
   border = false,
+  usage,
 }: {
   color: string;
   label: string;
   cssVar: string;
   border?: boolean;
+  usage?: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -386,9 +389,10 @@ function Swatch({
         }`}
       />
       <div className="flex items-baseline justify-between gap-2">
-        <code className="font-mono text-mono-sm text-text-strong">{label}</code>
+        <code className="font-mono text-mono-sm text-text-primary">{label}</code>
         <code className="font-mono text-mono-sm text-text-muted">{cssVar}</code>
       </div>
+      {usage && <p className="text-caption text-text-muted">{usage}</p>}
     </div>
   );
 }
@@ -406,7 +410,7 @@ function LayerSwatch({
     <div
       className={`${bg} border-border-subtle flex min-h-[120px] flex-col justify-between rounded-lg border p-4`}
     >
-      <code className="font-mono text-mono-sm text-text-strong">{label}</code>
+      <code className="font-mono text-mono-sm text-text-primary">{label}</code>
       <p className="text-caption text-text-body">{description}</p>
     </div>
   );

@@ -27,19 +27,17 @@ Dark-first, near-black neutrals, single indigo accent, paired semantic fg/bg for
 
 The neutral scale is what the app looks like 90% of the time. Every token is named by role so code reads like the design, not like `zinc-900`.
 
-| Token              | Hex      | Purpose                                     |
-|--------------------|----------|---------------------------------------------|
-| `bg-page`          | `#08080B` | Page background (app root)                 |
-| `bg-sidebar`       | `#0B0B0F` | Sidebar, topbar                            |
-| `bg-surface`       | `#101014` | Cards, inputs, table rows                  |
-| `bg-surface-hover` | `#18181B` | Hover states, active nav                   |
-| `border-subtle`    | `#1C1C21` | Default borders, dividers                  |
-| `border-strong`    | `#27272A` | Input focus, emphasis                      |
-| `text-muted`       | `#52525B` | Labels, section headers                    |
-| `text-secondary`   | `#71717A` | Timestamps, metadata                       |
-| `text-body`        | `#A1A1AA` | Body copy, inactive nav                    |
-| `text-strong`      | `#D4D4D8` | Table values, data                         |
-| `text-primary`     | `#FAFAFA` | Headings, active items                     |
+| Token              | Hex      | Purpose                                                  |
+|--------------------|----------|----------------------------------------------------------|
+| `bg-page`          | `#08080B` | Page background (app root)                              |
+| `bg-sidebar`       | `#0B0B0F` | Sidebar, topbar                                         |
+| `bg-surface`       | `#101014` | Cards, inputs, table rows                               |
+| `bg-surface-hover` | `#18181B` | Hover states, active nav                                |
+| `border-subtle`    | `#1C1C21` | Default borders, dividers                               |
+| `border-strong`    | `#27272A` | Input focus, emphasis                                   |
+| `text-muted`       | `#71717A` | Labels, timestamps, metadata, captions, disabled states |
+| `text-body`        | `#A1A1AA` | Body copy, inactive nav, table text                     |
+| `text-primary`     | `#FAFAFA` | Headings, active items, emphasized values               |
 
 **Rule:** never hand-mix a shade between two stops. If two greys feel wrong next to each other, pick a different pair from the scale — don't invent a 12th stop.
 
@@ -99,10 +97,8 @@ Paste exactly into `src/app/globals.css`. This block is the runtime source of tr
   --bg-surface-hover:  #18181B;
   --border-subtle:     #1C1C21;
   --border-strong:     #27272A;
-  --text-muted:        #52525B;
-  --text-secondary:    #71717A;
+  --text-muted:        #71717A;
   --text-body:         #A1A1AA;
-  --text-strong:       #D4D4D8;
   --text-primary:      #FAFAFA;
 
   /* Accent */
@@ -152,6 +148,12 @@ See `docs/DEFERRED.md` § "Light mode" for revisit conditions.
 
 ## 3. Typography
 
+This typography scale applies to the application UI only. The Proposal
+Generator (Phase 6) produces client-facing documents rendered to HTML
+and PDF for healthcare CFOs and procurement leads. Proposals use a
+separate, larger typography scale defined in the Phase 6 module spec —
+not this scale. Do not retrofit app typography into proposal output.
+
 ### 3.1 Font stack
 
 ```typescript
@@ -196,6 +198,21 @@ CSS variable names (also exported in `--text-*`): `--text-micro: 11px`, `--text-
 - Numbers in tables, pricing, IDs, timestamps, currency: `mono` family.
 - Micro labels (e.g., "PIPELINE") are `micro` (11px, uppercase, 0.06em tracking). Use sparingly; not every section wants an eyebrow.
 - Weights in play: 400 (body), 500 (headings + micro). No 600, no 700. This is a deliberate restraint — the palette carries the hierarchy, the weight doesn't need to.
+
+### 3.4 Concrete usage table (3-tier text system)
+
+The text token system has three tiers: `text-muted` / `text-body` / `text-primary`. Emphasis above body comes from weight (500), not from a separate color tier. Table value-vs-header hierarchy is carried by this pairing.
+
+| Context                | Token          | Weight            |
+|------------------------|----------------|-------------------|
+| Page title (h1, 20px)  | `text-primary` | 500               |
+| Section (h2, 16px)     | `text-primary` | 500               |
+| Body copy (14px)       | `text-body`    | 400               |
+| Table value (14px)     | `text-body`    | 500               |
+| Table header (12px)    | `text-muted`   | 500               |
+| Timestamp (12px)       | `text-muted`   | 400               |
+| Micro label (11px)     | `text-muted`   | 500 uppercase     |
+| Disabled text          | `text-muted`   | 400               |
 
 ---
 
@@ -266,7 +283,7 @@ lg         44px      20px         body    (14px / weight 500) md
 
 Variants:
 primary    --accent bg, --text-primary fg, no border
-secondary  var(--bg-surface) bg, var(--text-strong) fg, 1px var(--border-subtle) border
+secondary  var(--bg-surface) bg, var(--text-body) fg, 1px var(--border-subtle) border
 ghost      transparent, var(--text-body) fg, no border, var(--bg-surface-hover) bg on hover
 danger     var(--danger-bg) bg, var(--danger-fg) fg, no border
 
@@ -277,6 +294,16 @@ Disabled:  50% opacity, no hover state
 ```
 
 Primary button is indigo `#6366F1` — the `--accent` CSS variable.
+
+**Variant color reference (locked):**
+
+- `primary` — `bg-accent text-text-primary` (indigo fill, white text)
+- `secondary` — `bg-surface text-text-body border border-border-subtle`
+- `ghost` — transparent bg, `text-text-body`, no border, hover `bg-surface-hover`
+- `danger` — `bg-danger-bg text-danger-fg` (destructive actions ONLY — Delete, Remove, Discard)
+
+Never use `accent` for destructive actions. A destructive action must
+never share color semantics with a primary action.
 
 ### 6.2 Input / Textarea
 
@@ -296,7 +323,17 @@ Focus:
 Error:
   border:      1px solid var(--danger-fg)
   helper text: var(--danger-fg), 12px caption
+  focus ring:  var(--danger-fg) at 20% opacity (replaces accent-hover ring)
 ```
+
+**Error state (lines, not blocks):**
+When an input is in an error state, apply `border-danger-fg` to the
+input and `text-danger-fg` to the helper text below. Do NOT fill
+with `bg-danger-bg` — inputs are a "lines" case, not a "blocks" case.
+This is the canonical exception to the paired-fg/bg rule (see
+`docs/GOTCHAS.md` § Semantic tokens ship as fg/bg pairs, never bare).
+
+Focus ring in error state: `ring-danger-fg` instead of `ring-accent-hover`.
 
 ### 6.3 Card
 
@@ -525,7 +562,7 @@ export const chartDefaults = {
     strokeDasharray: '0',  // solid, not dashed
   },
   axis: {
-    stroke: 'var(--text-secondary)',
+    stroke: 'var(--text-muted)',
     fontSize: 12,
     fontFamily: "var(--font-mono)",
   },

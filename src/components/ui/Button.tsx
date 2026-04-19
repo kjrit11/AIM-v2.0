@@ -42,13 +42,13 @@ const variantClasses: Record<ButtonVariant, string> = {
     'active:bg-accent-hover'
   ),
   secondary: cn(
-    'bg-bg-surface text-text-strong border-border-subtle',
+    'bg-bg-surface text-text-body border-border-subtle',
     'hover:bg-bg-surface-hover',
     'active:bg-bg-surface-hover'
   ),
   ghost: cn(
     'bg-transparent text-text-body border-transparent',
-    'hover:bg-bg-surface-hover hover:text-text-strong',
+    'hover:bg-bg-surface-hover hover:text-text-primary',
     'active:bg-bg-surface-hover'
   ),
   danger: cn(

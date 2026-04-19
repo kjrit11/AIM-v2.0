@@ -139,6 +139,11 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 **Discovered:** 2026-04-19 (Phase 2 dark indigo pivot)
 **Lesson:** Each semantic token (`success`, `warning`, `danger`, `info`) is a `{ fg, bg }` pair — there is no `bg-danger` or `text-danger` utility. Use `bg-danger-bg` + `text-danger-fg` together. The pair is the design contract: fg without bg reads as raw color, bg without fg reads as broken. An input's error border uses `border-danger-fg` (the fg carries outside the pair because a 1px line needs the punchy color); a badge uses both. When writing a new component, ask "is this a block or a line?" — blocks use the pair, lines use fg.
 
+### Dropping a design token = multi-file rename, not a delete
+**Where:** `src/app/globals.css`, `tailwind.config.ts`, `src/lib/tokens.ts`, all components, docs/STYLE_GUIDE.md, docs/GOTCHAS.md
+**Discovered:** 2026-04-19 (Phase 1.5 text-tier collapse)
+**Lesson:** When a token is removed from the locked system, grep every `.md`, `.tsx`, `.ts`, and `.css` file for references before removing the CSS variable. Dropping the variable first produces dangling `var(--foo)` that silently fall back to inherited or invalid values at runtime — no compile-time error, no ESLint warning. Always: grep → map old→new per site → apply renames → then drop the variable. For doc-example references and primitive consumers, map semantics deliberately (a `text-strong` removal is not a mechanical `text-body` rename — the old site may have meant "darker than body," which in a 3-tier system resolves to either `text-body font-medium` or `text-text-primary` depending on context). Flag individual call sites for review rather than bulk-replacing.
+
 ---
 
 ## How to add an entry

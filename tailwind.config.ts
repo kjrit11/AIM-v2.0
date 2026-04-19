@@ -37,12 +37,10 @@ const config: Config = {
           strong: 'var(--border-strong)',
         },
 
-        // Text (text-muted, text-secondary, text-body, text-strong, text-primary)
+        // Text (text-muted, text-body, text-primary — 3 tiers)
         text: {
           muted: 'var(--text-muted)',
-          secondary: 'var(--text-secondary)',
           body: 'var(--text-body)',
-          strong: 'var(--text-strong)',
           primary: 'var(--text-primary)',
         },
 

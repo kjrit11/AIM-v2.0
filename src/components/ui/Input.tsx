@@ -37,7 +37,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           // Shape + base
           'h-9 w-full px-3',
           'rounded-md border',
-          'bg-bg-surface text-text-strong',
+          'bg-bg-surface text-text-body',
           'text-body',
           'transition-[border-color,box-shadow] duration-150',
 

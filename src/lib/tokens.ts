@@ -35,9 +35,7 @@ export const colors = {
 
   text: {
     muted: 'var(--text-muted)',
-    secondary: 'var(--text-secondary)',
     body: 'var(--text-body)',
-    strong: 'var(--text-strong)',
     primary: 'var(--text-primary)',
   },
 

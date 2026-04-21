@@ -8,29 +8,33 @@ import { z } from 'zod';
  * module load; a missing or empty value crashes the process with a
  * per-variable error message. Crash fast > silent failure.
  *
- * Name convention: keep NEXTAUTH_* (v4-style) rather than AUTH_* (v5-style)
- * because .env.local uses NEXTAUTH_*. NextAuth v5 reads both; we accept the
- * deprecation warning in exchange for not having to rewrite the secrets file.
+ * Auto-injected vars (DATABRICKS_*, NEXT_DEPLOYMENT_ID) are provided by
+ * Databricks Apps at runtime in prod and absent in dev — hence optional.
+ * Do not list them in .env.example as fields to fill.
  *
  * Never import this in client components. Server-only.
  */
 
 const envSchema = z.object({
-  AZURE_AD_CLIENT_ID: z
+  // Required
+  ANTHROPIC_API_KEY: z
     .string()
-    .min(1, 'AZURE_AD_CLIENT_ID is required (Entra app registration client ID)'),
-  AZURE_AD_TENANT_ID: z
-    .string()
-    .min(1, 'AZURE_AD_TENANT_ID is required (CareInMotion Entra tenant ID)'),
-  AZURE_AD_CLIENT_SECRET: z
-    .string()
-    .min(1, 'AZURE_AD_CLIENT_SECRET is required (Entra app client secret)'),
-  NEXTAUTH_URL: z
-    .string()
-    .url('NEXTAUTH_URL must be a valid URL (e.g. http://localhost:3000)'),
-  NEXTAUTH_SECRET: z
-    .string()
-    .min(32, 'NEXTAUTH_SECRET must be at least 32 chars (generate with: openssl rand -base64 32)'),
+    .min(1, 'ANTHROPIC_API_KEY is required (Anthropic API key for claude-sonnet-4-6)'),
+
+  // Optional — required for Phase 3 Databricks SQL access
+  DATABRICKS_WAREHOUSE_ID: z.string().optional(),
+  DATABRICKS_SERVER_HOSTNAME: z.string().optional(),
+  DATABRICKS_HTTP_PATH: z.string().optional(),
+
+  // Auto-injected by Databricks Apps at runtime (absent in dev)
+  DATABRICKS_HOST: z.string().optional(),
+  DATABRICKS_CLIENT_ID: z.string().optional(),
+  DATABRICKS_CLIENT_SECRET: z.string().optional(),
+  DATABRICKS_APP_NAME: z.string().optional(),
+  DATABRICKS_APP_PORT: z.string().optional(),
+  DATABRICKS_APP_URL: z.string().optional(),
+  DATABRICKS_WORKSPACE_ID: z.string().optional(),
+  NEXT_DEPLOYMENT_ID: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

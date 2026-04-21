@@ -1,34 +1,27 @@
-export { auth as middleware } from '@/auth';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-/**
- * Route-protection middleware — AIM v2
- * ======================================
- *
- * Phase 2 responsibility: block unauthenticated requests to protected
- * routes, redirect to /auth/signin with callbackUrl preserved.
- *
- * Allowlist (do NOT run auth):
- *   /                            — unauthenticated landing
- *   /auth/*                      — sign-in + error pages
- *   /design                      — dev-only design gallery
- *   /_next/static/*              — static assets
- *   /_next/image                 — image optimizer
- *   /api/auth/*                  — NextAuth endpoints (covered by /api exclusion)
- *   /favicon.ico
- *
- * The matcher regex below uses a negative lookahead that exempts these
- * paths. See the walk-through in the Phase 2 self-check for each of
- * the 8 canonical test paths.
- *
- * GOTCHA: prefix-match on `design` means /designer, /design-tokens etc.
- * will ALSO be treated as public. If such routes are added, tighten this
- * matcher OR rename the route. See docs/GOTCHAS.md.
- *
- * This middleware handles AUTH ONLY. Request-ID middleware is a Phase 3
- * concern (structured logging lives there) — do not combine.
- */
+export function middleware(req: NextRequest) {
+  // Attach a request ID for observability (CLAUDE.md Rule #7)
+  const requestId = crypto.randomUUID();
+  const res = NextResponse.next();
+  res.headers.set('x-request-id', requestId);
+
+  // Defense-in-depth: Databricks proxy enforces auth at the platform edge,
+  // but reject requests missing x-forwarded-email in prod as a safety net.
+  if (process.env.NODE_ENV === 'production') {
+    const email = req.headers.get('x-forwarded-email');
+    if (!email) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+  }
+
+  return res;
+}
+
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|design|auth|$).*)',
+    // Match all request paths except for static assets and Next internals
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

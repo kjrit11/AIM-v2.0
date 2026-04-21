@@ -1,20 +1,7 @@
-import { requireAuth } from '@/auth';
+import { requireDatabricksUser } from '@/lib/databricksUser';
 
-/**
- * Dashboard — AIM v2 Phase 2 placeholder
- * ========================================
- *
- * First authenticated route. Middleware already enforces auth at the
- * edge; requireAuth() here gives the server component a typed,
- * non-null user and doubles as a defense-in-depth guard (page won't
- * render without a session, even if the matcher regex ever regresses).
- *
- * Phase 7 replaces this placeholder with the real Overview module
- * (KPI tiles, pipeline chart, recent activity). See docs/REBUILD_PLAN.md.
- */
-
-export default async function DashboardPage() {
-  const user = await requireAuth('/dashboard');
+export default function DashboardPage() {
+  const user = requireDatabricksUser();
 
   return (
     <div className="mx-auto max-w-page px-6 py-8">

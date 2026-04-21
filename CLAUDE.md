@@ -1,6 +1,6 @@
 # CLAUDE.md — AIM v2 Sales Command Center
 
-**Last updated:** 2026-04-19 (Phase 2 auth — rule #2 file path updated for NextAuth v5)
+**Last updated:** 2026-04-21 (Phase 2b — platform pivot to Databricks Apps native identity)
 
 ---
 
@@ -35,7 +35,7 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **State:** `@tanstack/react-query` v5, TTLs only from `/src/lib/queryConfig.ts`
 - **Forms:** `react-hook-form` + Zod
 - **Validation:** Zod schemas shared between client and server (single source of truth)
-- **Auth:** NextAuth v5 with Azure AD / Entra ID provider (SSO only, no passwords)
+- **Auth:** Databricks Apps native identity via x-forwarded-* headers (no passwords, no session storage)
 - **AI:** `@anthropic-ai/sdk` direct from Next.js API routes, model `claude-sonnet-4-6`
 - **Data:** Databricks SQL Connector → Unity Catalog (`sales.*` schemas)
 - **Migrations:** Versioned SQL files in `/migrations/versions/` run by CI (no Alembic — see `docs/MIGRATIONS.md`)
@@ -46,15 +46,15 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Feature flags:** `sales.core.features` table + `useFeature()` hook
 - **Testing:** Playwright for 5 critical flows, Vitest for unit/component (no cap)
 - **Component lib:** Storybook 8 — every primitive documented before first use
-- **Hosting:** Azure Container Apps (frontend only — no backend container)
-- **Secrets:** Azure Key Vault (no `.env.local` in production)
+- **Hosting:** Databricks Apps (serves Next.js standalone output)
+- **Secrets:** Databricks secret scopes (can be Azure Key Vault-backed); no `.env.local` in production
 
 ---
 
 ## Non-negotiable rules
 
 1. All DB access through `executeQuery()` from `/src/lib/db.ts`. Never raw SQL inline.
-2. All auth through `getSessionUser()` or `requireAuth()` from `/src/auth.ts`.
+2. All auth through `getDatabricksUser()` or `requireDatabricksUser()` from `/src/lib/databricksUser.ts`.
 3. All cache TTLs from `CACHE.*` in `/src/lib/queryConfig.ts`. Never hardcode `staleTime` or `gcTime` in components.
 4. No inline hex values in any `.tsx` or `.ts` file under `/src/components/`. Tokens only. Enforced by ESLint.
 5. No `sales.app.*` references in application code, except for the explicitly allowlisted tables during their migration phase (see `docs/ARCHITECTURE.md` § Schema inventory).
@@ -81,6 +81,7 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Progress:** `/PROGRESS.md` — current phase, in-flight work, top 3 queued items.
 - **Full plan:** `/docs/REBUILD_PLAN.md` — phased build order, exit criteria per phase.
 - **Deferred:** `/docs/DEFERRED.md` — features explicitly not being built now, with revisit conditions.
+- **Databricks Apps config:** `/app.yaml` — app runtime command + env. `/databricks.yml` — bundle spec (name, workspace, target). `/copy-static.js` — postbuild script that copies `.next/static` and `public/` into `.next/standalone/` (required by `output: 'standalone'`).
 
 ---
 

@@ -1,21 +1,8 @@
 import { cn } from '@/lib/cn';
+import type { DatabricksUser } from '@/lib/databricksUser';
 import { UserMenu } from './UserMenu';
 
-/**
- * TopBar — AIM v2 app shell
- * ===========================
- *
- * Fixed-height (56px) bar at the top of every authenticated page.
- * Left side intentionally empty — no logo, no page title (STYLE_GUIDE
- * §8.1: PageHeader lives inside the content area, not the top bar).
- *
- * Right side: UserMenu. That's it, for Phase 2.
- *
- * Server component — it doesn't need session state itself; UserMenu is
- * the only client piece.
- */
-
-export function TopBar() {
+export function TopBar({ user }: { user: DatabricksUser }) {
   return (
     <header
       className={cn(
@@ -24,7 +11,7 @@ export function TopBar() {
         'px-6',
       )}
     >
-      <UserMenu />
+      <UserMenu user={user} />
     </header>
   );
 }

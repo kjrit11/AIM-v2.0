@@ -1,0 +1,6 @@
+command: ['node', '.next/standalone/server.js']
+env:
+  - name: NODE_ENV
+    value: production
+  - name: PORT
+    valueFrom: DATABRICKS_APP_PORT

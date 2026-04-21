@@ -143,19 +143,16 @@ Safe low-regret cleanups that don't break v1. See `/docs/WAVE_1_CLEANUP.md` for 
 
 ---
 
-### Phase 2 — Auth + app shell (1 session)
+### Phase 2 — Auth + app shell (Databricks native)
 
-- NextAuth v5 with Entra ID provider
-- `/src/lib/auth.ts` with `getSessionUser()` and `requireAuth()`
-- Session cookie: HTTP-only, secure, SameSite=Lax
-- `(app)/layout.tsx` with sidebar + topbar
-- Sidebar nav: MAIN (Overview, Opportunities, Leads, Accounts), INTEL (Policy, Industry, Competitive, AI News), AGENTS (Pricing, Proposal, Notepad), SYSTEM (Settings)
-- Middleware protects all `(app)/*` routes
-- Login page at `(auth)/login/page.tsx`
-- On first login: match Entra email against `sales.core.users.email`. Auto-provision row if no match. Entra group → AIM role mapping.
-- **Decision (Kevin):** Session timeout UX — silent token refresh vs inline re-auth prompt on 401.
+- **No NextAuth, no custom login page, no session storage.** Databricks Apps sits in front of the Next.js server and authenticates users at the platform edge. App code reads `x-forwarded-*` headers.
+- `/src/lib/databricksUser.ts` with `getDatabricksUser()` and `requireDatabricksUser()`. Dev shim in `/src/lib/devAuth.ts` (tree-shaken from prod).
+- `(app)/layout.tsx` calls `requireDatabricksUser()` server-side and passes the user to `AppShell`.
+- Sidebar nav: MAIN (Overview, Opportunities, Leads, Accounts), INTEL (Policy, Industry, Competitive, AI News), AGENTS (Pricing, Proposal, Notepad), SYSTEM (Settings).
+- Defense-in-depth middleware at `/src/middleware.ts` rejects prod requests missing `x-forwarded-email` with 401.
+- User → DB join (matching `x-forwarded-email` against `sales.core.users.email`) + auto-provision + role derivation are **Phase 3 concerns**, not Phase 2.
 
-**Exit:** Kevin logs in. Sees the empty app shell. Logs out. Unauthenticated access to `/overview` redirects to `/login`.
+**Exit:** Deployed to `aim-v2-dev`. Kevin opens the app, is authenticated automatically through Databricks, and sees the empty shell with his email in the top bar.
 
 ---
 
@@ -325,10 +322,12 @@ Phase 5 can ship reading only from `sales.core.*` if the Salesforce decision is 
 
 ### Phase 10 — Deploy + v1 hard cutover (1 session)
 
-- Dockerfile for v2
-- GitHub Actions in `kjrit11/Aim-v2.0`: build → push to ACR → deploy to new Container App
-- Azure Key Vault wired for all secrets (DATABRICKS_TOKEN, ANTHROPIC_API_KEY, NEXTAUTH_SECRET, SENTRY_DSN, ENTRA_CLIENT_SECRET, RESEND_API_KEY or ACS equivalent)
-- `migrate.yml` workflow runs SQL migrations on merge to `main`, blocks deploy on failure
+**Databricks Apps deploy flow (not Container Apps):**
+- `databricks bundle deploy -t dev` provisions the `aim-v2-dev` app resource from `databricks.yml`
+- `databricks apps deploy aim-v2-dev --source-code-path /Workspace/Users/.../.bundle/aim_v2_dev/dev/files` uploads and starts the code. Bundle deploy alone does NOT trigger code deployment — see `docs/GOTCHAS.md`.
+- Secrets live in a Databricks secret scope (Azure Key Vault-backed) and are referenced by name from the bundle: DATABRICKS_TOKEN (not strictly required — service principal is auto-injected), ANTHROPIC_API_KEY, SENTRY_DSN, RESEND_API_KEY or ACS equivalent. No NEXTAUTH_SECRET, no ENTRA_CLIENT_SECRET — those were deleted with the auth layer.
+- `migrate.yml` workflow runs SQL migrations on merge to `main`, blocks deploy on failure.
+- Push-to-main auto-deploy is DEFERRED — requires a GitHub Action wrapping both `databricks bundle deploy` and `databricks apps deploy`. See `docs/DEFERRED.md`.
 
 **Wave 4 — final cleanup migrations:**
 - `006_drop_backwards_compat_views.sql` — drop `sales.core.deals` view (v1 stops working — intentional), drop `sales.app.proposals` facade view, etc.
@@ -338,15 +337,14 @@ Phase 5 can ship reading only from `sales.core.*` if the Salesforce decision is 
 **Hard cutover procedure:**
 1. Confirm v1 has been read-only since Phase 5
 2. Run Wave 4 migrations against prod
-3. DNS / custom domain CNAME updated from v1 Container App to v2 Container App
+3. Promote the bundle target from `dev` to a prod target and redeploy
 4. Watch Sentry + `/api/health` + logs for 2 hours
 5. If green: stop v1's Container App (do not delete yet)
 6. After 7 days: delete v1 Container App, archive `kjrit11/SalesCommandCenter` on GitHub
 
-- Custom domain + TLS on v2 Container App
 - **Decision (Kevin):** Databricks cost alert threshold and recipient
 
-**Exit:** Production URL serves v2. Kevin logs in from a fresh browser and completes all 5 Playwright flows by hand. v1 Container App is stopped.
+**Exit:** Production Databricks App serves v2. Kevin hits the app URL, is authenticated through Databricks automatically, and completes all 5 Playwright flows by hand. v1 Container App is stopped.
 
 ---
 

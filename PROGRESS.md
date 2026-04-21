@@ -1,12 +1,12 @@
 # AIM v2 — Progress
 
-**Last updated:** 2026-04-19 (Phase 2 auth — Entra ID SSO + app shell landing)
+**Last updated:** 2026-04-21 (Phase 2b — platform pivot to Databricks Apps)
 
 ---
 
 ## Current phase
 
-**Phase 2 — Auth + app shell (Entra ID SSO)** in flight. Phase 1 + 1.5 shipped to origin/main through commit c7de1c1; scaffold validated end-to-end locally (`npm run build` exit 0, `/design` gallery renders in browser against dark-indigo tokens).
+**Phase 2b — Platform pivot to Databricks Apps (Databricks native identity)** shipping as a single PR that supersedes 7d82dd6. Pivot validated by a throwaway spike (2026-04-20) against the real Databricks Apps platform. Phase 1 + 1.5 shipped to origin/main through commit c7de1c1.
 
 ---
 
@@ -100,15 +100,24 @@
 
 **Verification (from worktree):** `npx tsc --noEmit`, `npm run lint`, `npm run build` — see self-check report for exit codes and output. Build was run with stub env values (.env.local is not in this worktree per .gitignore; dev runtime picks up the real values from main worktree's .env.local).
 
+### Phase 2b — Platform pivot to Databricks Apps (supersedes 7d82dd6)
+
+Two-commit PR on `platform-pivot-databricks-apps`:
+
+- Commit A (`refactor(platform): remove NextAuth + Entra ID auth layer`) — deletes `src/auth.ts`, the NextAuth route handler, `/auth/signin` + `/auth/error` pages, `next-auth.d.ts`, `SessionProviderWrapper`; strips Entra/NextAuth env vars; removes `next-auth` dependency; intentionally leaves build broken.
+- Commit B (`feat(platform): add Databricks Apps native identity via x-forwarded-* headers`) — adds `src/lib/databricksUser.ts` (`getDatabricksUser` / `requireDatabricksUser` reading `x-forwarded-email`, `x-forwarded-user`, `x-forwarded-preferred-username`, `x-forwarded-access-token`), dev shim at `src/lib/devAuth.ts` (dynamically required, tree-shaken from prod), new middleware with request-ID header + prod 401-on-missing-email, `app.yaml` + `databricks.yml` + `copy-static.js` at repo root for Databricks Apps deploy, `next.config.mjs` with `output: 'standalone'`, updated Zod env schema with `ANTHROPIC_API_KEY` required + 8 optional `DATABRICKS_*`/`NEXT_DEPLOYMENT_ID` auto-injected, rewires `(app)/layout.tsx` / dashboard / AppShell / TopBar / UserMenu to prop-thread the user, converts `/` to server-side redirect to `/dashboard`.
+
+Seven new gotchas documented — static-copy postbuild, `{userId}@{workspaceId}` parse, OBO token arrives by default, 8 auto-injected env vars, bundle/manual state conflict, deploy-is-two-steps, PowerShell stderr coloring. See `docs/GOTCHAS.md` § "Databricks Apps platform findings".
+
 ---
 
 ## Queued — top 3 for next phase
 
-1. **Phase 3 — Data layer** (Databricks SQL connection, migration runner, repository pattern, observability). Wave 2 migrations (005 rename deals→opportunities, 006 create leads) run here through the first-party runner. Also: reconcile Entra claims with `sales.core.users.email` per ARCHITECTURE.md open question.
+1. **Phase 3 — Data layer** (Databricks SQL connection via `executeQuery()`, migration runner, repository pattern, observability). Wave 2 migrations (005 rename deals→opportunities, 006 create leads) run here through the first-party runner. User reconciliation: match `x-forwarded-email` against `sales.core.users.email` and auto-provision on miss (not an Entra/Graph call anymore — just an email join).
 
-2. **Phase 4 — Pricing Agent** (first revenue-path module). Seed-file COGS; `partner_contracts` integration deferred to Phase 4.5.
+2. **Phase 3 — SCIM role derivation.** Replace the deleted Entra groups path with Databricks SCIM. App service principal reads group membership for the current user, filters on `AIM *` prefix, caches on `sales.core.users.role`. See `docs/DEFERRED.md` § Role derivation.
 
-3. **GOTCHAS update — Genie / AI migration runner ban.** Document that AI assistants (Genie, Claude, etc.) must NOT be used as migration runners. Phase 3's runner must be first-party Node/Python code. (Carried over from previous top 3 — still unchecked.)
+3. **First Databricks Apps deploy.** `databricks bundle deploy -t dev` + `databricks apps deploy aim-v2-dev ...`. Validate that `.next/standalone/server.js` starts, static assets resolve through the copy-static script, and `x-forwarded-*` headers arrive end-to-end at the running app — not just the spike.
 
 ---
 
@@ -125,7 +134,7 @@ See `/docs/DEFERRED.md` for items explicitly not being built right now, with rat
 | Phase 0 | Repo scaffold (docs) | 1 |
 | **Wave 1** | **Schema cleanup (4 migrations)** | **0.5 (hand-executed 2026-04-19)** |
 | Phase 1 | Design system + primitives | 1–2 (**files generated 2026-04-19**) |
-| Phase 2 | Auth + app shell (Entra ID SSO) | 1 |
+| Phase 2 | Auth + app shell (Databricks native) | 1 |
 | Phase 3 | Data layer + migrations + observability + sales.app audit | 1–2 |
 | Phase 4 | **Pricing Agent** (first revenue-path module) | 2 |
 | Phase 5 | Opportunities module (with deal_users + pricing_visibility) | 1–2 |

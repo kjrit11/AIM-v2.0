@@ -199,53 +199,28 @@ See `/docs/MIGRATIONS.md` for the full workflow.
 
 ---
 
-### Auth — NextAuth v5 with Entra ID, SSO only
+### Auth — Databricks Apps native identity (x-forwarded-* headers)
 
-**Decision:** Azure AD / Entra ID as the only auth provider. No passwords. No Credentials provider. v1's bcrypt-hashed passwords in `sales.core.users.password_hash` become unused.
+**Decision:** Databricks Apps hosts the app and sits in front of it as an authenticating reverse proxy. The platform handles Entra/Databricks IdP login at its edge and forwards an already-authenticated request into the Next.js server with the user's identity encoded in `x-forwarded-*` headers. The app code never sees a login flow, never handles tokens, never stores a session.
 
-**Reasoning:** Everyone who uses AIM already has a CareInMotion Entra account. Managing passwords is overhead with no payoff. Entra group membership drives role assignment.
+**Reasoning:** Databricks Apps + Unity Catalog + on-behalf-of-user (OBO) tokens give us row-level authorization for free against the same IdP our users already use. NextAuth + a custom Entra app registration + Graph calls for group membership was 300+ lines of code and a deploy-day checklist item. Deleting it is unambiguously a win for an internal sales tool.
 
-**Entra app registration (Phase 2 setup):**
+**Headers that arrive on every request:**
 
-A single-tenant app registration in CareInMotion's Entra tenant, granted the following Microsoft Graph permissions with admin consent:
+- `x-forwarded-email` — user's primary email (canonical identity key for joins against `sales.core.users.email`)
+- `x-forwarded-user` — arrives as `{userId}@{workspaceId}`, NOT just `{userId}` (see `docs/GOTCHAS.md`). Parse with `.split('@')` — both halves are useful (userId for audit, workspaceId for scoping).
+- `x-forwarded-preferred-username` — display-friendly username
+- `x-forwarded-access-token` — user's OBO access token. Arrives on every request by default in our workspace (not OBO-consent-gated as docs suggest). Treat as sensitive: never log, never send to client, never store.
 
-| Scope | Purpose | Used in |
-|---|---|---|
-| `User.Read` | Read the signed-in user's profile (name, email, photo) | Every login; profile display |
-| `GroupMember.Read.All` | Read the signed-in user's group memberships to derive role | Every login; role caching on `sales.core.users.role` |
-| `Mail.Send` | Send outbound email as the user (e.g., proposal emails, task-assignment notifications) | Phase 6 (Proposals), Phase 8 (Notes & Tasks notifications) |
-| `Mail.Read` | Read the user's inbox — surfacing client emails relevant to an opportunity | Phase 5+ (not yet scoped to a specific feature) |
-| `Calendars.ReadWrite` | Read/create calendar events — e.g., scheduling client calls, auto-attaching agendas | Phase 7 (deferred from v1) |
-| `ChannelMessage.Send` | Send messages to Teams channels — e.g., posting proposal notifications to a deal room | Phase 6+ (deferred, optional) |
-| `Presence.Read.All` | Read other users' Teams presence — useful for delegation UI ("Sarah is offline") | Phase 8+ (deferred) |
+**Reading the user (server-side only):**
 
-**All seven scopes are registered at Phase 2** even though several aren't consumed until later Phases. Rationale: admin consent is a one-time request for the whole scope set. Requesting additional scopes later triggers a fresh consent flow for every user, which is a friction point we'd rather avoid. Unused scopes don't cost anything while dormant.
+`src/lib/databricksUser.ts` exposes `getDatabricksUser()` / `requireDatabricksUser()`. In development the headers are absent (no Databricks proxy locally), so a hardcoded shim (`src/lib/devAuth.ts`) provides `dev@local.test`; the shim is dynamic-`require`d and tree-shaken out of prod bundles. See `scripts/dev-headers.md`.
 
-**Group-to-role derivation (runs on every login):**
+**Defense-in-depth middleware:** `src/middleware.ts` rejects prod requests missing `x-forwarded-email` with a 401. The Databricks proxy is the primary enforcement point; this is a belt-and-braces guard against a misrouting bug.
 
-Four Entra security groups, managed in the Entra portal by CareInMotion admins:
+**Role derivation: deferred.** Phase 2 is allow-any-authenticated-user. Phase 3 will derive roles via SCIM (app service principal reads group membership from Databricks SCIM endpoints) and cache them on `sales.core.users.role`. The old Graph API scope table is gone — we no longer need scopes like `User.Read`, `GroupMember.Read.All`, `Mail.Send`, etc.; anything that required those now flows through Databricks-issued tokens or through SCIM reads. Mail-sending features (Phase 6+) will revisit the auth path then.
 
-| Entra group | AIM role | Access level |
-|---|---|---|
-| `AIM Admins` | `admin` | Full — including template authoring, settings |
-| `AIM Executives` | `executive` | Full read + task audit trail visibility + pricing full |
-| `AIM Sales` | `sales` | Default working role — create/edit notes, opportunities, proposals |
-| `AIM Viewers` | `viewer` | Read-only (future state; not actively used at launch) |
-
-On the OAuth callback in NextAuth v5:
-
-1. Exchange code for tokens (ID token + access token)
-2. Call Graph `/me/memberOf?$select=id,displayName` with the access token
-3. Filter the returned groups for names starting with `AIM ` — ignore everything else
-4. Match against the derivation table above; cache the derived role on `sales.core.users.role`
-5. Cache the full `AIM *` group list in `sales.core.users.entra_groups_json` for audit purposes
-6. If the user belongs to no `AIM *` group, the login fails with a clear message: "AIM access requires membership in an AIM group in Entra. Contact your admin."
-
-**Refresh cadence:** role is refreshed on every login. If a user is removed from an Entra group while logged in, they retain the role until their session expires (2 hours). Acceptable for the trust model — we're not protecting high-risk secrets, and the 2-hour window is aligned with session timeout.
-
-**Pre-launch requirement (Phase 10 deploy step):** Kevin or IT must create the four Entra groups and populate them with intended users before the first v2 login, otherwise every login fails. This is a deploy-day checklist item, not a runtime concern.
-
-**Open question for Phase 2:** reconciling Entra claims with `sales.core.users.email` and the `owner_name` strings in `sales.core.deals`. Plan: on first login, match by email (primary key). If no match, auto-provision. Document resolved matches.
+**Open question for Phase 3:** reconciling `x-forwarded-email` with `sales.core.users.email` and the `owner_name` strings in `sales.core.deals`. Plan: on first request per user, match by email. If no match, auto-provision a row in `sales.core.users`.
 
 ---
 
@@ -339,32 +314,34 @@ Every primitive has a Storybook story before it's used in a page.
 
 ---
 
-### Hosting — Azure Container Apps, single container
+### Hosting — Databricks Apps (inverted from earlier decision)
 
-**Decision:** Deploy to Azure Container Apps. One Container App, frontend only. Not Databricks Apps.
+**Decision:** Deploy to Databricks Apps. App name `aim-v2-dev`. Next.js 14 `output: 'standalone'` mode, served on Node 22.16 on the port Databricks injects as `DATABRICKS_APP_PORT`.
 
-**Reasoning:** Databricks Apps is appealing on paper — same platform as the data, shared Entra SSO, row-level security flows through natively. Three hard constraints rule it out:
+**This decision is inverted from the earlier Azure Container Apps plan.** The original reasoning rested on three constraints — a 30-second ingress timeout, Python-first platform assumptions, and a claim that we had no row-level access control need. A spike against the real Databricks Apps platform (2026-04-20) disproved the first two, and the third is weaker than it looked:
 
-1. **30-second ingress timeout.** Databricks Apps HTTP requests cap at 30 seconds. Several AIM workflows routinely exceed this: note summary generation runs 30-60 seconds, proposal generation runs 45-90 seconds, pricing quote generation with AI narrative runs 20-40 seconds. We can engineer around this (background jobs, webhook callbacks, streaming), but every AI-heavy endpoint becomes a multi-step choreography instead of a single request-response. On Container Apps, these are a straightforward request that completes when it completes.
+1. **The "30-second ingress timeout" was folklore.** The spike confirmed SSE streams survive 60+ seconds. None of AIM's AI workflows (note summary 30-60s, proposal 45-90s, pricing narrative 20-40s) are blocked by the platform.
+2. **Next.js runs cleanly.** Node 22.16 is the default runtime; `output: 'standalone'` deploys straight to the platform. No Python-adjacent workaround needed. Custom middleware, App Router streaming, image optimization all work.
+3. **Row-level access control is actually useful.** `sales.core.deal_users.pricing_visibility` gating is app-layer today, but OBO tokens (`x-forwarded-access-token`) let us push pricing visibility into Unity Catalog filters in future phases without rewriting the client.
 
-2. **Python-first platform assumptions.** Databricks Apps' first-class support is Gradio, Streamlit, Dash. Next.js runs — via a Node buildpack — but it's a second-class citizen. Custom SSR, middleware, edge routes, image optimization, and the App Router's streaming responses all land in "works but isn't the happy path" territory. Container Apps treats Next.js as a first-class tenant.
+**What we get by running on Databricks Apps:**
 
-3. **No row-level access control need.** The argument for Databricks Apps' security model is access control enforced at the data layer. AIM's access control is at the app layer — everyone signed in sees everything except pricing details, which are gated by `sales.core.deal_users.pricing_visibility`. There's no sensitive row-filter scenario that needs Unity Catalog row-level security to enforce.
+- **Identity for free.** Entra login handled at the platform edge. `x-forwarded-*` headers arrive pre-authenticated. No NextAuth, no custom Entra app registration, no Graph scope table, no role-derivation callback code. Deleted entirely.
+- **Co-located with the data.** No cross-region hop between app and warehouse.
+- **Managed secrets.** Databricks secret scopes (which can themselves be Azure Key Vault-backed) replace a separate Key Vault wiring.
+- **Simpler deploy.** `databricks bundle deploy` + `databricks apps deploy` (see `docs/REBUILD_PLAN.md` § Phase 10). No container registry, no Dockerfile, no GitHub Actions workflow for image push.
 
 **Trade-offs accepted:**
 
-- **Entra SSO is slightly more work.** Databricks Apps auto-wires Entra identity. On Container Apps, we configure NextAuth with the Microsoft provider, register an app in Entra, grant Graph permissions, handle token refresh. Documented pattern; one-time setup.
-- **Mobile client future is preserved.** API-first architecture (see below) means a React Native client could call the same endpoints a future browser client does. Databricks Apps' architecture ties compute to the platform in ways that make an external mobile client awkward. This matters when Kevin is in a meeting and wants to mark a task done from his phone.
-- **Cost is slightly higher.** Always-on Container App vs Databricks Apps' pay-per-request. For a small team, the delta is marginal ($40-80/month) and predictable.
+- **Mobile-client path is narrower.** Databricks Apps is a web-only runtime. A future mobile client would call a separate API surface (a different Databricks App or a companion service). Acceptable: mobile is already deferred to DEFERRED.md and a Phase 3+ conversation.
+- **Platform lock-in is real.** If Databricks Apps pivots, pulls OBO from preview, or changes the header contract, we pay migration cost. Mitigations documented in `docs/DEFERRED.md` § OBO fallback.
 
 **What we're hosting:**
 
-- One Container App, `aim-web`, in resource group `rg-aim-v2`
-- Image registry: Azure Container Registry `aimv2acr`
-- Deploy via GitHub Actions on push to `main`
-- Managed identity assigned; used to read Azure Key Vault secrets at runtime
-- Scale: min 1 replica, max 3 replicas, HTTP-based scaling rule
-- Ingress: HTTPS-only, custom domain `aim.careinmotion.com`
+- One app, `aim-v2-dev`, defined in `databricks.yml` bundle (target `dev`)
+- Command surface: `app.yaml` at repo root — `node .next/standalone/server.js`, `PORT` from `DATABRICKS_APP_PORT`
+- Postbuild static-copy script (`copy-static.js`) required because `output: 'standalone'` doesn't copy `.next/static` or `public/`
+- See `docs/GOTCHAS.md` for seven spike-validated constraints (static-copy, split-on-@, auto-token, 7 env vars, bundle/manual conflict, deploy-is-two-steps, PowerShell stderr coloring)
 
 ---
 
@@ -398,9 +375,9 @@ Documented as a DEFERRED entry rather than an open question, because the v2 deci
 
 ---
 
-### Secrets — Azure Key Vault
+### Secrets — Databricks secret scopes
 
-All secrets in `kv-salescommandcenter`. Container App references via managed identity.
+All secrets live in a Databricks secret scope (can be Azure Key Vault-backed). The app references them at deploy time through the bundle resource; no explicit runtime fetch code. Auto-injected Databricks env vars (`DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, etc. — see `docs/GOTCHAS.md`) are provided by the platform on every request.
 
 ---
 

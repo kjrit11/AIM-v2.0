@@ -1,6 +1,6 @@
 # Gotchas — AIM v2
 
-**Last updated:** 2026-04-19 (Phase 2 auth — azure-ad provider deprecation, middleware prefix collisions, auth() dual-role)
+**Last updated:** 2026-04-21 (Phase 2b platform pivot — seven Databricks Apps spike findings)
 
 Running list of non-obvious things you need to know before touching specific tables, patterns, or integrations. Appended to at the end of every session where a new gotcha is discovered.
 
@@ -173,6 +173,45 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 **Where:** `src/app/globals.css`, `tailwind.config.ts`, `src/lib/tokens.ts`, all components, docs/STYLE_GUIDE.md, docs/GOTCHAS.md
 **Discovered:** 2026-04-19 (Phase 1.5 text-tier collapse)
 **Lesson:** When a token is removed from the locked system, grep every `.md`, `.tsx`, `.ts`, and `.css` file for references before removing the CSS variable. Dropping the variable first produces dangling `var(--foo)` that silently fall back to inherited or invalid values at runtime — no compile-time error, no ESLint warning. Always: grep → map old→new per site → apply renames → then drop the variable. For doc-example references and primitive consumers, map semantics deliberately (a `text-strong` removal is not a mechanical `text-body` rename — the old site may have meant "darker than body," which in a 3-tier system resolves to either `text-body font-medium` or `text-text-primary` depending on context). Flag individual call sites for review rather than bulk-replacing.
+
+---
+
+## Databricks Apps platform findings (2026-04-20 spike)
+
+### `output: 'standalone'` does not copy static assets
+**Where:** `next.config.mjs`, `copy-static.js`, `package.json` build script
+**Discovered:** 2026-04-20
+**Lesson:** Next.js `output: 'standalone'` produces `.next/standalone/server.js` but does NOT copy `.next/static/` or `public/` into the standalone tree. The server starts, then 404s every static asset. Fix: a postbuild script (`copy-static.js`) using Node's `fs` module to recursively copy both directories. Do not use shell commands (`cp -r`) — Databricks build infra is Linux but Windows dev machines need the same script to work locally, and Node `fs` is portable.
+
+### `x-forwarded-user` is `{userId}@{workspaceId}`, not just `{userId}`
+**Where:** `src/lib/databricksUser.ts`
+**Discovered:** 2026-04-20
+**Lesson:** The spike expected `x-forwarded-user` to contain just the IdP user ID. It actually arrives as `{userId}@{workspaceId}` — e.g. `abc123@7890def`. Parse with `.split('@')`. Both halves are useful: userId for audit log stability (survives workspace migrations), workspaceId for future multi-workspace scoping of queries. Don't throw away the workspace half.
+
+### `x-forwarded-access-token` arrives by default, not via OBO consent
+**Where:** `src/lib/databricksUser.ts`, anywhere that logs request headers
+**Discovered:** 2026-04-20
+**Lesson:** Databricks Apps docs suggest `x-forwarded-access-token` only arrives after an explicit OBO (on-behalf-of-user) consent flow. In our workspace it arrives on every request, by default, in Phase 2. Treat it as sensitive from day one: never log it, never send it to the browser, never write it to analytics. The header is a user-impersonating access token.
+
+### Databricks Apps auto-injects 7 env vars + `NEXT_DEPLOYMENT_ID`, not 3
+**Where:** `src/lib/env.ts`, anything that reads `process.env.DATABRICKS_*`
+**Discovered:** 2026-04-20
+**Lesson:** Databricks docs mention "a few" auto-injected env vars and show 3 examples. Actual count is 8: `DATABRICKS_APP_NAME`, `DATABRICKS_APP_PORT`, `DATABRICKS_APP_URL`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_HOST`, `DATABRICKS_WORKSPACE_ID`, and `NEXT_DEPLOYMENT_ID`. All absent in local dev; all present in prod. Declare them as optional in the Zod schema (`.optional()`) — crashing the dev server because Databricks-injected vars aren't set is a footgun.
+
+### Bundle deploy vs manual `databricks apps create` → Terraform state conflict
+**Where:** `databricks.yml`, deploy workflow (Phase 10)
+**Discovered:** 2026-04-20
+**Lesson:** Creating an app manually with `databricks apps create aim-v2-dev` and then running `databricks bundle deploy` against a `databricks.yml` that declares the same app resource produces a Terraform state conflict: "An app with the same name already exists." The bundle owns Terraform state; manual `apps create` does not. Pick one pattern and stick with it. **We use bundles only.** If an app was manually created, delete it before the first bundle deploy.
+
+### `databricks bundle deploy` provisions, does NOT deploy code
+**Where:** Phase 10 deploy workflow, `docs/REBUILD_PLAN.md` Phase 10
+**Discovered:** 2026-04-20
+**Lesson:** `databricks bundle deploy` creates/updates the app resource (Terraform-style) but does NOT trigger a code deployment. The first time, you'll see the app listed in the Databricks UI but hitting its URL returns an error because no code is deployed. Explicit second step required: `databricks apps deploy <name> --source-code-path /Workspace/Users/.../.bundle/<bundle-name>/<target>/files`. Both commands are needed on every deploy. Easy to script, easy to forget.
+
+### Databricks CLI 0.297.2 stderr appears as red errors in PowerShell
+**Where:** Dev ergonomics only (no production impact)
+**Discovered:** 2026-04-20
+**Lesson:** Databricks CLI v0.297.2 writes informational/progress output to stderr, which PowerShell wraps in red `ErrorRecord` objects with `NativeCommandError` metadata — looks like everything failed even when exit code is 0. Pipe through `2>&1 | Out-String` for readable output, or check `$LASTEXITCODE` explicitly. Cosmetic issue; does not affect actual behavior. Don't waste time debugging a "failure" that's just stderr coloring.
 
 ---
 

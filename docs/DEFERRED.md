@@ -1,6 +1,6 @@
 # Deferred — AIM v2
 
-**Last updated:** 2026-04-19 (light mode added — dark indigo pivot deferred light)
+**Last updated:** 2026-04-21 (Phase 2b pivot — SCIM role derivation, push-to-main auto-deploy, OBO fallback)
 
 Features and ideas that came up during v2 planning but were explicitly deferred to protect scope. These are not forgotten — they're parked.
 
@@ -144,6 +144,40 @@ When it returns, the light palette will be re-derived from the current dark toke
 **Why deferred:** Phase 6 sends proposals. Tracking opens and clicks requires tracking-pixel infrastructure and adds privacy concerns.
 
 **When to revisit:** After Phase 6 ships and usage data shows it's worth the complexity.
+
+---
+
+### Role derivation via Entra groups
+
+**Status:** Not implemented in Phase 2. All authenticated users have the same (implicit) role. `sales.core.users.role` is not populated from group membership; `sales.core.users.entra_groups_json` is not populated.
+
+**Why deferred:** Phase 2b pivoted to Databricks Apps native identity, which removes the Graph API call path that was going to do group lookup. Rebuilding that against Databricks SCIM requires Phase 3's data layer (we need `executeQuery()`, `sales.core.users`, and structured logging in place first). Shipping an unroled app shell is the right order of operations — nothing Phase 2 displays cares about role.
+
+**How it will work:** App service principal calls Databricks SCIM endpoints (`/api/2.0/preview/scim/v2/Me/groups` or equivalent), filters for group names starting with `AIM `, matches against the same four-group table that was in the old NextAuth flow (`AIM Admins` → admin, `AIM Executives` → executive, `AIM Sales` → sales, `AIM Viewers` → viewer), caches the derived role on `sales.core.users.role` on first request.
+
+**When to revisit:** Phase 3. Blocking requirement for any Phase 4+ module that branches on role (Pricing margin visibility already needs per-deal `pricing_visibility`, but Executives should see audit trails in Phase 8).
+
+---
+
+### Push-to-main auto-deploy
+
+**Status:** Manual `databricks bundle deploy && databricks apps deploy` today.
+
+**Why deferred:** Automation is a Phase 10 concern and requires a GitHub Action wrapping both CLI commands. Databricks has a "Git-based deploy" feature but it's pull-based (the workspace pulls on a schedule), not push-triggered — not what we want. A real CI-driven push-triggered deploy needs the CLI inside a runner with a service-principal PAT.
+
+**When to revisit:** Phase 10. Parallel to the hard-cutover work. Until then, Kevin runs the two commands from his terminal on each promoted change — fine for a single-user internal tool in active build.
+
+---
+
+### OBO fallback (if on-behalf-of-user tokens get pulled)
+
+**Status:** We rely on `x-forwarded-access-token` arriving on every request with the user's OBO token (Public Preview feature as of 2026-04). Phase 3 plans to use it to read Unity Catalog with the user's row-level permissions.
+
+**Why deferred:** The preview might get pulled, change shape before GA, or change the consent model. Baking in the assumption now is fine; having no fallback plan is not.
+
+**Fallback design:** If OBO gets pulled or doesn't make GA cleanly, the app service principal reads all Unity Catalog data (no per-user filtering at the DB layer) and row-level filtering moves into the app layer — `executeQuery()` reads `x-forwarded-email`, joins against `sales.core.users`, and filters by role + `sales.core.deal_users.pricing_visibility` in application code. Worse than Unity Catalog filtering (a bug in the app leaks data) but feasible.
+
+**When to revisit:** End of Phase 3. If OBO status is still unclear or shows signs of being deprecated, flip to the fallback plan before we commit Phase 4+ features to the user-token model.
 
 ---
 

@@ -1,28 +1,17 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import type { DatabricksUser } from '@/lib/databricksUser';
 
-function initials(
-  given: string | null | undefined,
-  family: string | null | undefined,
-  name: string | null | undefined,
-  email: string | null | undefined,
-): string {
-  if (given && family) {
-    return `${given[0]}${family[0]}`.toUpperCase();
-  }
-  if (name && name.trim().length >= 2) {
-    return name.trim().slice(0, 2).toUpperCase();
-  }
-  if (email && email.length >= 2) {
-    return email.slice(0, 2).toUpperCase();
-  }
+function initials(username: string, email: string): string {
+  const source = username || email;
+  if (source.length >= 2) return source.slice(0, 2).toUpperCase();
   return '??';
 }
 
-// TODO(Commit B): accept user prop from parent
-export function UserMenu() {
-  const user = undefined;
+export function UserMenu({ user }: { user: DatabricksUser }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,14 +43,7 @@ export function UserMenu() {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const label = initials(
-    user?.given_name,
-    user?.family_name,
-    user?.name,
-    user?.email,
-  );
-  const displayName = user?.name ?? user?.email ?? 'Signed in';
-  const displayEmail = user?.email ?? '';
+  const label = initials(user.username, user.email);
 
   return (
     <div ref={containerRef} className="relative">
@@ -93,10 +75,8 @@ export function UserMenu() {
           )}
         >
           <div className="px-4 py-3">
-            <div className="text-body text-text-primary">{displayName}</div>
-            {displayEmail ? (
-              <div className="text-caption text-text-muted">{displayEmail}</div>
-            ) : null}
+            <div className="text-body text-text-primary">{user.username}</div>
+            <div className="text-caption text-text-muted">{user.email}</div>
           </div>
         </div>
       )}

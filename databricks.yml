@@ -1,0 +1,16 @@
+bundle:
+  name: aim_v2_dev
+
+workspace:
+  host: https://adb-1291693653051285.5.azuredatabricks.net
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+resources:
+  apps:
+    aim_v2_dev:
+      name: aim-v2-dev
+      source_code_path: ./

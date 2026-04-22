@@ -244,3 +244,5 @@ imports it via a `dist/contracts/` internal path. Type-only import — a future
 SDK version that moves the file breaks at typecheck, not silently at runtime.
 If a version bump fails to import: check `node_modules/@databricks/sql/dist/`
 for the new type location.
+
+Serverless SQL warehouse cold start is ~5-8 seconds. A first query after idle will trip the 2-second slow-query threshold. Subsequent queries on warm compute run in 100-500ms. When Phase 7+ dashboards start firing queries, consider warming the warehouse before the UI hits it, or raise the slow-query threshold to 8s. Post-merge consideration, not blocking.

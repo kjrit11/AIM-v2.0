@@ -215,6 +215,19 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 
 ---
 
+## Phase 3a — data layer foundation (2026-04-22)
+
+### AsyncLocalStorage is Node-runtime-only
+**Where:** `src/lib/requestContext.ts`, `src/middleware.ts`, `src/app/(app)/layout.tsx`
+**Discovered:** 2026-04-22
+**Lesson:** `node:async_hooks` (and therefore `AsyncLocalStorage`) is not reliably available on the Edge runtime. Middleware runs on Edge, so it cannot bind request-scoped values via ALS itself. The pattern instead:
+1. Middleware generates a request ID and stamps it on the incoming request headers with `NextResponse.next({ request: { headers } })`, plus on the response headers for client correlation.
+2. Node-runtime boundaries (route handlers, the `(app)` layout — anything that calls into `executeQuery` / `logger`) read `x-request-id` from `headers()` and wrap their work in `withRequestContext({ requestId, userEmail }, fn)`.
+3. `logger.ts` and `executeQuery()` read the bound context via `getContext()`.
+Do not try to call `als.run()` or `als.enterWith()` from middleware — even if it compiles, the Edge runtime's async context does not propagate into the downstream Node handler, so consumers would see `undefined`. Set the request ID via request-header pass-through and let the Node side own the ALS binding.
+
+---
+
 ## How to add an entry
 
 1. End of session, before committing: did I learn something that's not obvious from the code?
@@ -223,3 +236,11 @@ These gotchas were hard-won in v1 and still apply — the underlying DB and busi
 4. In code comments, reference the gotcha: `// See docs/GOTCHAS.md § [title]`.
 
 The test for whether something is a gotcha: *would a competent engineer looking at this code a month from now guess wrong?* If yes, it's a gotcha.
+
+### `@databricks/sql` internal type import
+
+The SDK does not re-export `IDBSQLClient` from its package root. `src/lib/db.ts`
+imports it via a `dist/contracts/` internal path. Type-only import — a future
+SDK version that moves the file breaks at typecheck, not silently at runtime.
+If a version bump fails to import: check `node_modules/@databricks/sql/dist/`
+for the new type location.

@@ -156,34 +156,64 @@ Safe low-regret cleanups that don't break v1. See `/docs/WAVE_1_CLEANUP.md` for 
 
 ---
 
-### Phase 3 — Data layer + migrations + observability + sales.app audit (1–2 sessions)
+### Phase 3 — Data layer + migrations + observability + sales.app audit
 
-**Core infrastructure:**
-- `/src/lib/db.ts` — Databricks SQL Connector wrapper with `executeQuery()`, parameterized queries only, request ID logging, query duration tracked
-- `/src/lib/logger.ts` — structured JSON logger with request ID middleware
-- `/src/lib/anthropic.ts` — Claude client with retry + timeout
-- `/src/lib/features.ts` — `useFeature()` client + `getFeature()` server (reads from `sales.core.features` created in Wave 1)
-- `resolveCatalog(context)` function — the only place that decides `sales.*` / `sales_dev.*` / `sales_demo.*` routing
-- Sentry wired to client and server; breadcrumb on queries >2s
-- `/api/health` endpoint runs a tiny DB query and reports warehouse latency
+Phase 3 is split into three sub-phases. Each ships independently. 3a lands the plumbing everything else depends on; 3b adds user reconciliation and the first deploy; 3c wires role derivation.
 
-**Zod schemas** in `/src/schemas/`:
-- `User`, `Account`, `Opportunity`, `Lead`, `DealUser` (with `pricingVisibility`)
+---
 
-**Schema audit task (completes the Wave 1 audit):**
-- Run `COUNT(*)` and `SELECT * LIMIT 3` on every `sales.app.*` table not yet confirmed
-- Confirm dispositions in `docs/ARCHITECTURE.md` — which are live, which are empty, which are stale
-- Confirm `SELECT DISTINCT pricing_visibility FROM sales.core.deal_users` — document the full enum in GOTCHAS.md
-- Identify the Salesforce sync job owner for `sales.integration.*`; document in ARCHITECTURE.md
+### Phase 3a — Data layer foundation (1 session)
 
-**Migrations (Wave 2):**
-- `003_rename_deals_to_opportunities_with_view.sql` — rename + backwards-compat view. v1 keeps reading `sales.core.deals`; v2 reads `sales.core.opportunities`. See `docs/MIGRATIONS.md`.
-- `004_create_leads_table_and_migrate_prospects.sql` — new `sales.core.leads` table, CTAS from `sales.app.prospects` (+ prospect_notes, prospect_strategy, prospect_users). Leave the source tables in place until Phase 10. Point v2 code at the new table.
+**Scope:** the plumbing that every feature after this point inherits. No migrations, no user reconciliation, no deploy — those are 3b.
 
-- `migrations/runner.ts` — idempotent runner
-- `npm run schema:generate` populates `docs/SCHEMA.md` from `DESCRIBE TABLE` output — committed in the same PR
+- `/src/lib/db.ts` — Databricks SQL Connector wrapper. `executeQuery()` takes `(sql, params?)`, binds via `@databricks/sql`'s named-parameter API, logs one structured line per call (`duration_ms`, `row_count`, `sql_hash`), emits a `db.slow_query` warn + Sentry breadcrumb on `>2s`. PAT (`DATABRICKS_TOKEN`) preferred; falls back to the service-principal credentials auto-injected by Databricks Apps in prod. Exports `TABLES` / `VIEWS` const objects (CLAUDE.md Rule #11), `resolveCatalog()`, and `qualifiedName(schema, table)`.
+- `/src/lib/logger.ts` — structured JSON logger. Reads `request_id` and `user_email` from `requestContext` when bound. `log.info / warn / error / debug`. `debug` is no-op in prod. No third-party logging deps.
+- `/src/lib/requestContext.ts` — `AsyncLocalStorage` for per-request values. Exports `withRequestContext(ctx, fn)` and `getContext()`.
+- `/src/lib/queryConfig.ts` — `CACHE.*` TTL constants (CLAUDE.md Rule #3). Initial entries: `PRICING`, `INTEL_FEEDS`, `OPPORTUNITIES`, `USERS`.
+- `/src/instrumentation.ts`, `/sentry.{server,client,edge}.config.ts` — Sentry scaffold. No-ops cleanly when `SENTRY_DSN` is empty. DSN acquisition deferred.
+- `/src/middleware.ts` — stamps `x-request-id` on both incoming request and outgoing response headers via `NextResponse.next({ request: { headers } })`. No ALS binding at the Edge.
+- `/src/app/(app)/layout.tsx` — reads `x-request-id` from `headers()`, binds `requestContext` via `withRequestContext` so Node-runtime descendants inherit it.
+- `scripts/db-smoke-test.ts` — standalone `SELECT 1` validator. Run manually (`npx tsx scripts/db-smoke-test.ts`) with a real `DATABRICKS_TOKEN`. Not wired into CI.
+- `docs/DEV_SETUP.md` — how to get a PAT, which env vars go in `.env.local`, catalog routing, Sentry stub behavior.
 
-**Exit:** `executeQuery()` returns live rows from `sales.core.opportunities` and `sales.core.leads`. v1 still works against `sales.core.deals` via the view. Every query logs with request ID + duration. Sentry captures a deliberate test error. `docs/SCHEMA.md` is populated. `sales.app` audit complete; each table has an explicit disposition in ARCHITECTURE.md.
+**Env schema changes** (`src/lib/env.ts`): `AIM_CATALOG` required (no NODE_ENV default — crashes fast on miss). `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH` promoted from optional to required. `DATABRICKS_TOKEN` and `SENTRY_DSN` optional.
+
+**Exit:**
+- `executeQuery()` works end-to-end: `scripts/db-smoke-test.ts` returns a row and the emitted log line includes `request_id` + `duration_ms`.
+- Logger emits structured JSON with `request_id` on every call within a request-context scope.
+- Sentry config files exist and no-op cleanly when DSN is unset — `npm run build` does not error.
+- `npm run typecheck`, `npm run lint`, `npm run build` all exit 0.
+
+---
+
+### Phase 3b — User reconciliation + Wave 2 migrations + first deploy (1 session)
+
+**Scope:** connect identity to data and ship to the real Databricks Apps runtime for the first time.
+
+- `/src/lib/users.ts` — match `x-forwarded-email` against `sales.core.users.email`; auto-provision a row on miss. Reconcile-on-layout pattern in `(app)/layout.tsx`.
+- `/scripts/migrate.ts` — first-party Node migration runner per `docs/MIGRATIONS.md`. Idempotent; updates `sales.core.schema_migrations`.
+- **Wave 2 migrations:**
+  - `005_rename_deals_to_opportunities_with_view.sql` — rename + backwards-compat view. v1 keeps reading `sales.core.deals`; v2 reads `sales.core.opportunities`.
+  - `006_create_leads_table_and_migrate_prospects.sql` — CTAS from `sales.app.prospects` (+ `prospect_notes`, `prospect_strategy`, `prospect_users`) into `sales.core.leads`.
+- **Zod schemas** in `/src/schemas/`: `User`, `Account`, `Opportunity`, `Lead`, `DealUser` (with `pricingVisibility`).
+- **Schema audit** (completing the Wave 1 audit): run `COUNT(*)` and `SELECT * LIMIT 3` on remaining `sales.app.*` tables; reconcile dispositions in `docs/ARCHITECTURE.md`; `SELECT DISTINCT pricing_visibility FROM sales.core.deal_users` recorded in GOTCHAS.md.
+- **First deploy:** `databricks bundle deploy -t dev`, then `databricks apps deploy aim-v2-dev --source-code-path /Workspace/Users/.../.bundle/aim_v2_dev/dev/files`. Both commands required — see `docs/GOTCHAS.md` § "deploy-is-two-steps".
+- `/api/health` endpoint — runs a tiny DB query and reports warehouse latency. Deferred from 3a so 3b has something to smoke-test against the deployed app.
+
+**Exit:** `executeQuery()` returns live rows from `sales.core.opportunities` and `sales.core.leads` against the deployed `aim-v2-dev` app. A user hitting the app is auto-provisioned and `sales.core.users` has their row. v1 still works against `sales.core.deals` via the view.
+
+---
+
+### Phase 3c — SCIM role derivation (0.5–1 session)
+
+**Scope:** replace the deleted Entra/Graph group-lookup path with Databricks SCIM.
+
+- App service principal reads group membership via SCIM endpoint.
+- Filter groups on `AIM *` prefix.
+- Cache result on `sales.core.users.role` with a TTL; refresh on layout hit.
+- Reconcile-on-layout pattern in `(app)/layout.tsx` picks up role alongside the 3b user match.
+
+**Exit:** a known-admin email resolves to `role = 'admin'` in `sales.core.users` after first post-deploy hit; a non-admin resolves to the correct lower-privilege role.
 
 ---
 

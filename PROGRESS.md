@@ -1,12 +1,12 @@
 # AIM v2 — Progress
 
-**Last updated:** 2026-04-21 (Phase 2b shipped; Phase 3 split into 3a/3b/3c)
+**Last updated:** 2026-04-22 (Phase 3a data-layer foundation shipped)
 
 ---
 
 ## Current phase
 
-**Between phases.** Phase 2b shipped to `origin/main` in merge commit `34576fb` on 2026-04-21. Phase 3 has been split into three sub-phases (3a, 3b, 3c). Phase 3a is the next thing to pick up.
+**Between phases.** Phase 3a shipped on 2026-04-22 (commit hash TBD — Kevin fills in after PR merge). Phase 3b is the next thing to pick up.
 
 ---
 
@@ -87,15 +87,37 @@ Two-commit PR on `platform-pivot-databricks-apps` (branch now deleted). Validate
 - `src/components/layout/TopBar.tsx` modified to thread the `user` prop from AppShell to UserMenu — necessary byproduct
 - `"typecheck": "tsc --noEmit"` added to `package.json` scripts — CLAUDE.md references this command but no script existed
 
+### Phase 3a — Data layer foundation (2026-04-22, commit hash TBD)
+
+Single-commit PR on `phase-3a-data-foundation`. Establishes plumbing for every feature after this point. Smoke test (`scripts/db-smoke-test.ts`) must be run manually by Kevin with a real `DATABRICKS_TOKEN` before merge.
+
+- ✓ `src/lib/db.ts` — `executeQuery<T>(sql, params?)` wrapper over `@databricks/sql`. Parameterized only (positional `?` rewritten to named `:param_N`). Per-call structured log with `duration_ms`, `row_count`, `sql_hash`. `>2s` warn + Sentry breadcrumb. Exports `TABLES`, `VIEWS`, `resolveCatalog()`, `qualifiedName()`. PAT preferred, SP-creds fallback.
+- ✓ `src/lib/logger.ts` — structured JSON logger. Reads `request_id` / `user_email` from `requestContext`. `log.info/warn/error/debug`. `debug` no-op in prod. No third-party deps.
+- ✓ `src/lib/requestContext.ts` — `AsyncLocalStorage` binding with `withRequestContext(ctx, fn)` and `getContext()`.
+- ✓ `src/lib/queryConfig.ts` — `CACHE.*` TTL constants (`PRICING`, `INTEL_FEEDS`, `OPPORTUNITIES`, `USERS`) with `SECOND/MINUTE/HOUR/DAY` helpers.
+- ✓ `src/instrumentation.ts` + `sentry.{server,client,edge}.config.ts` — Sentry scaffolding. No-ops cleanly when `SENTRY_DSN` is empty. TODOs point at DSN acquisition.
+- ✓ `src/middleware.ts` — stamps `x-request-id` on incoming request headers (via `NextResponse.next({ request: { headers } })`) and response headers. No ALS at the Edge.
+- ✓ `src/app/(app)/layout.tsx` — reads `x-request-id` via `headers()`, binds via `withRequestContext` so Node-runtime descendants inherit it.
+- ✓ `src/lib/env.ts` — `AIM_CATALOG` required (no default), `DATABRICKS_{WAREHOUSE_ID,SERVER_HOSTNAME,HTTP_PATH}` promoted from optional to required, `DATABRICKS_TOKEN` + `SENTRY_DSN` optional.
+- ✓ `scripts/db-smoke-test.ts` — standalone `SELECT 1 AS ok` validator (tiny inline `.env.local` parser — no dotenv dep). Run with `npx tsx scripts/db-smoke-test.ts`.
+- ✓ `docs/DEV_SETUP.md` — PAT generation, `.env.local` contents, catalog routing, Sentry stub behavior.
+- ✓ `docs/GOTCHAS.md` — new Phase 3a gotcha: "AsyncLocalStorage is Node-runtime-only" (middleware uses request-header pass-through instead).
+- ✓ `docs/REBUILD_PLAN.md` — Phase 3 section restructured into 3a/3b/3c with exit criteria each.
+- ✓ `CLAUDE.md` — "Where things live" now points at `src/lib/db.ts` for table/view name constants.
+- ✓ `package.json` — added `@databricks/sql`, `@sentry/nextjs`; added `tsx` devDep for smoke test.
+- ✓ `.env.example` — `AIM_CATALOG`, `DATABRICKS_TOKEN`, and updated `SENTRY_DSN` comment.
+
+**Out-of-scope (deferred to 3b as planned):** user reconciliation, `/api/health` route, migration runner, Wave 2 migrations, first deploy.
+
 ---
 
 ## Queued — top 3 for next phase
 
-1. **Phase 3a — Data layer foundation.** Establishes the plumbing that Phase 4+ builds on. New files: `src/lib/db.ts` (`executeQuery()` wrapper, parameterized only, request-ID + duration logging, table/view name constants), `src/lib/queryConfig.ts` (CACHE.* TTL constants), `src/lib/logger.ts` (structured JSON logger reading request-ID from middleware context), `src/instrumentation.ts` (Sentry init). Modifies: `src/lib/env.ts` (promote Databricks connection vars from optional to required; add `SENTRY_DSN` optional), `src/middleware.ts` (propagate request-ID via AsyncLocalStorage or response header so logger can read it), `package.json` (add `@databricks/sql`, `@sentry/nextjs`). Exit criteria: a trivial API route can query the warehouse, emit a structured log with request ID, and Sentry captures an intentional error.
+1. **Phase 3b — User reconciliation + Wave 2 migrations + first deploy.** `src/lib/users.ts` (email-based reconciliation against `sales.core.users.email`, auto-provision on miss). Reconcile-on-layout pattern in `(app)/layout.tsx` — extends the 3a `withRequestContext` binding to also include the resolved user ID / role. `scripts/migrate.ts` first-party Node migration runner. Wave 2 migrations 005 (rename `deals`→`opportunities` with backwards-compat view) and 006 (create `sales.core.leads` via CTAS from `sales.app.prospects`). `/api/health` route runs a tiny `executeQuery` + reports latency. First Databricks Apps deploy: `databricks bundle deploy -t dev` + `databricks apps deploy aim-v2-dev --source-code-path ...`.
 
-2. **Phase 3b — User reconciliation + Wave 2 migrations + first deploy.** After 3a lands. `src/lib/users.ts` (email-based reconciliation against `sales.core.users.email`, auto-provision on miss), reconcile-on-layout pattern in `(app)/layout.tsx`, `scripts/migrate.ts` (first-party Node migration runner per `docs/MIGRATIONS.md`), migrations 005 (rename `deals` → `opportunities` with backwards-compat view) and 006 (create `sales.core.leads`). First Databricks Apps deploy happens here: `databricks bundle deploy -t dev` + `databricks apps deploy aim-v2-dev --source-code-path /Workspace/Users/.../.bundle/aim_v2_dev/dev/files`. Validates the pivot end-to-end in production for the first time.
+2. **Phase 3c — SCIM role derivation.** App service principal reads group membership via SCIM, filters on `AIM *` prefix, caches on `sales.core.users.role`. Replaces the deleted Entra/Graph path. Separate axis of complexity (external API calls + caching) — not bundled with 3b.
 
-3. **Phase 3c — SCIM role derivation.** After 3a + 3b are stable. App service principal reads group membership via SCIM, filters on `AIM *` prefix, caches result on `sales.core.users.role`. Replaces the deleted Entra/Graph path. Treated as a separate axis of complexity (external API calls, group filtering, caching strategy) — not bundled with foundation work.
+3. **Phase 4 — Pricing Agent (first revenue-path module).** Port v1's pricing calculation logic to the new data layer. 5 segment buttons, 20-band auto-detect, discount slider with 3 approval zones, COGS breakdown, margin floor enforced. `deal_users.pricing_visibility` gates margin/COGS visibility when viewed in a deal context. Consumes `CACHE.PRICING` TTLs.
 
 ---
 

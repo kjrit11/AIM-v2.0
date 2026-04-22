@@ -77,6 +77,7 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Migration workflow:** `/docs/MIGRATIONS.md` — versioned SQL files, CI runner, rollback procedure.
 - **Wave 1 cleanup:** `/docs/WAVE_1_CLEANUP.md` — one-time pre-Phase-1 schema cleanup (5 migrations).
 - **Schema reference:** `/docs/SCHEMA.md` — regenerated from `DESCRIBE TABLE` output in Phase 3. Never trust memory; check here.
+- **Table/view name constants:** `/src/lib/db.ts` — `TABLES` and `VIEWS` const objects. Import these rather than hardcoding schema strings.
 - **Gotchas:** `/docs/GOTCHAS.md` — running list of hard-won lessons. Appended at the end of every session.
 - **Progress:** `/PROGRESS.md` — current phase, in-flight work, top 3 queued items.
 - **Full plan:** `/docs/REBUILD_PLAN.md` — phased build order, exit criteria per phase.

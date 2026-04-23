@@ -6,7 +6,7 @@
 
 ## Current phase
 
-**Between phases.** Phase 3a shipped on 2026-04-22 (commit hash TBD — Kevin fills in after PR merge). Phase 3b is the next thing to pick up.
+**Phase 3b — in flight (2026-04-23).** Scope reduced from original plan: Wave 2 SQL migrations (005 `deals`→`opportunities`, 006 `prospects`→`leads`) deferred per warehouse investigation. `sales.core.opportunities` already exists with 70 rows identical to `sales.core.deals`; `sales.core.deals` must stay live until Phase 10 v1 cutover. Prospects→leads deferred to Wave 3 pending audit of the `prospect_*` satellite tables. Phase 3b therefore ships runner-only (Commit A) + user reconciliation + React Query + deploy env declarations (Commit B).
 
 ---
 

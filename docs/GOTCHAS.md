@@ -246,3 +246,12 @@ If a version bump fails to import: check `node_modules/@databricks/sql/dist/`
 for the new type location.
 
 Serverless SQL warehouse cold start is ~5-8 seconds. A first query after idle will trip the 2-second slow-query threshold. Subsequent queries on warm compute run in 100-500ms. When Phase 7+ dashboards start firing queries, consider warming the warehouse before the UI hits it, or raise the slow-query threshold to 8s. Post-merge consideration, not blocking.
+
+---
+
+## Phase 3b — user reconciliation + migration runner (2026-04-23)
+
+### Warehouse state drifts from repo — always verify before planning migrations
+**Where:** Any migration planning, `docs/SCHEMA.md`, `PROGRESS.md`
+**Discovered:** 2026-04-23
+**Lesson:** Before planning a migration, run `SHOW TABLES IN sales.core` and `SHOW TABLES IN sales.app` against the live warehouse and eyeball the row counts. The repo's planning docs describe the intended state, not the current state. Phase 3b's original Wave 2 plan (migrations 005 / 006 to rename `deals` → `opportunities` and `prospects` → `leads`) was rewritten after discovering `sales.core.opportunities` already existed with 70 rows identical to `sales.core.deals`. Rule: warehouse truth > repo intent; check first, then plan.

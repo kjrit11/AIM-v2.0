@@ -214,3 +214,21 @@ See `/docs/REBUILD_PLAN.md` § Phase 10 for the full cutover runbook.
 
 - When the schema stabilizes, revisit whether Alembic (or a similar tool) has matured enough against Databricks to be worth the dependency.
 - When we have more than one developer, add a PR check that verifies migration files follow the naming + numbering convention.
+
+---
+
+## Migration runner (Phase 3b)
+
+**Usage:** `npx tsx scripts/migrate.ts`
+
+- **Filename convention:** `/^\d{3}[a-z]?_[a-z0-9_]+\.sql$/`. The 3-digit prefix is the **version**; the optional `a`/`b`/`c` suffix is part of the **filename**. Multi-step operations that cannot be a single statement split into `NNNa`, `NNNb`, `NNNc` — all three share the same 3-digit version prefix.
+- **One statement per file.** The runner passes file contents straight to `executeQuery()`, which submits a single statement to Databricks. Two statements in one file will fail at the SDK layer.
+- **Dedup is by filename, not by version.** This is why `005a`, `005b`, `005c` can coexist: each gets its own row in `sales.core.schema_migrations` with `version='5'` but distinct `filename`.
+- **Manual execution only.** The app service principal is expected to lack DDL privilege in prod; migrations do not run automatically on deploy. Kevin runs the command from a local shell with a PAT (or an SP with DDL grants) before merging the PR that adds new files.
+- **Checksum:** SHA-256 hex digest of file contents, recorded on insert. Pre-existing Wave 1 rows (001–004) keep `checksum='bootstrap'` — grandfathered, not recomputed.
+- **Rollback policy:** none. To undo, write a forward-fix migration.
+- **Exit codes:** `0` on success OR when there are no pending files; `1` on any apply failure or on a `.sql` file whose name does not match the regex.
+
+### Wave 2 deferred
+
+The original Phase 3 plan called for migrations 005 (rename `deals` → `opportunities`) and 006 (create `sales.core.leads` from `sales.app.prospects`) to ship in Phase 3b. Both are deferred — see `docs/DEFERRED.md` for rationale. Phase 3b ships the runner only; the `migrations/versions/` directory is unchanged from Wave 1 (4 files, 001–004).

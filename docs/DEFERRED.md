@@ -181,6 +181,30 @@ When it returns, the light palette will be re-derived from the current dark toke
 
 ---
 
+### Migration 005 — drop `sales.core.deals`
+
+**Status:** Deferred to Phase 10 (v1 hard cutover).
+
+**Why deferred:** AIM v1.0 is live in production and reads `sales.core.deals`. Dropping the table would break v1 immediately. The v2 canonical table `sales.core.opportunities` already exists with identical 70-row data (partial prior rename work discovered when scoping Phase 3b). Until v1 is decommissioned, both tables stay.
+
+**When to revisit:** Phase 10 (v1 hard cutover). At that point, write a single-statement migration that drops `sales.core.deals`. The cutover PR also removes any v2 compatibility shims referencing `deals`.
+
+**Rough estimate:** <0.1 session — one-line migration file plus a tracking row.
+
+---
+
+### Prospects → leads rename (originally planned as migration 006)
+
+**Status:** Deferred to a dedicated Wave 3 cleanup pass, post-v1 cutover.
+
+**Why deferred:** `sales.app.prospects` has three related tables — `sales.app.prospect_notes`, `sales.app.prospect_strategy`, `sales.app.prospect_users` — each referencing `prospect_id`. Renaming the parent without auditing the satellites would leave orphaned FK-style references. Wave 3 audits all four tables together and either migrates the set or leaves it.
+
+**When to revisit:** After Phase 10 cutover, when v1 no longer reads the prospect_* tables. Schedule as Wave 3.
+
+**Rough estimate:** 1 session (audit + 4 coordinated migrations).
+
+---
+
 ## How to add to this list
 
 When scope creep happens mid-session:

@@ -57,15 +57,49 @@ const envSchema = z.object({
   NEXT_DEPLOYMENT_ID: z.string().optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+type Env = z.infer<typeof envSchema>;
 
-if (!parsed.success) {
-  const issues = parsed.error.issues
-    .map((i) => `  • ${i.path.join('.')}: ${i.message}`)
-    .join('\n');
-  // eslint-disable-next-line no-console
-  console.error(`\nInvalid environment configuration:\n${issues}\n`);
-  throw new Error('Environment validation failed — see errors above');
+let cached: Env | null = null;
+
+function loadEnv(): Env {
+  if (cached) return cached;
+  const parsed = envSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((i) => `  • ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    // eslint-disable-next-line no-console
+    console.error(`\nInvalid environment configuration:\n${issues}\n`);
+    throw new Error('Environment validation failed — see errors above');
+  }
+  cached = parsed.data;
+  return cached;
 }
 
-export const env = parsed.data;
+/**
+ * Proxied env accessor. Validation runs the first time a property is read,
+ * not at module load. This keeps the `env.VARIABLE` usage pattern but
+ * defers the Zod parse until runtime — necessary because Next.js build
+ * workers (page-data collection, static generation) do not always inherit
+ * `.env.local` into their process.env, and a module-load throw would fail
+ * the build even though the running app has full secrets.
+ *
+ * Crash-fast-on-first-use is preserved: any real code path (middleware,
+ * route handlers, server components, `executeQuery`) reads at least one
+ * env var, so a misconfigured process still dies on the first request
+ * rather than silently serving wrong data.
+ */
+export const env: Env = new Proxy({} as Env, {
+  get(_, prop: string) {
+    return loadEnv()[prop as keyof Env];
+  },
+  has(_, prop: string) {
+    return prop in loadEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(loadEnv());
+  },
+  getOwnPropertyDescriptor(_, prop: string) {
+    return Object.getOwnPropertyDescriptor(loadEnv(), prop);
+  },
+});

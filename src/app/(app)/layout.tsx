@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { AppShell } from '@/components/layout/AppShell';
 import { requireDatabricksUser } from '@/lib/databricksUser';
 import { withRequestContext } from '@/lib/requestContext';
+import { getOrProvisionUser } from '@/lib/users';
 
 export default async function AppGroupLayout({
   children,
@@ -17,6 +18,16 @@ export default async function AppGroupLayout({
 
   return withRequestContext(
     { requestId, userEmail: user.email },
-    async () => <AppShell user={user}>{children}</AppShell>,
+    async () => {
+      // Reconcile the header-authenticated user against sales.core.users.
+      // Lets any errors propagate to the Next.js error boundary rather than
+      // silently showing a blank dashboard.
+      const userRecord = await getOrProvisionUser(user.email, user.username);
+      return (
+        <AppShell user={user} userRecord={userRecord}>
+          {children}
+        </AppShell>
+      );
+    },
   );
 }

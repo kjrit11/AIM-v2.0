@@ -246,3 +246,32 @@ If a version bump fails to import: check `node_modules/@databricks/sql/dist/`
 for the new type location.
 
 Serverless SQL warehouse cold start is ~5-8 seconds. A first query after idle will trip the 2-second slow-query threshold. Subsequent queries on warm compute run in 100-500ms. When Phase 7+ dashboards start firing queries, consider warming the warehouse before the UI hits it, or raise the slow-query threshold to 8s. Post-merge consideration, not blocking.
+
+---
+
+## Phase 3b — user reconciliation + migration runner (2026-04-23)
+
+### Warehouse state drifts from repo — always verify before planning migrations
+**Where:** Any migration planning, `docs/SCHEMA.md`, `PROGRESS.md`
+**Discovered:** 2026-04-23
+**Lesson:** Before planning a migration, run `SHOW TABLES IN sales.core` and `SHOW TABLES IN sales.app` against the live warehouse and eyeball the row counts. The repo's planning docs describe the intended state, not the current state. Phase 3b's original Wave 2 plan (migrations 005 / 006 to rename `deals` → `opportunities` and `prospects` → `leads`) was rewritten after discovering `sales.core.opportunities` already existed with 70 rows identical to `sales.core.deals`. Rule: warehouse truth > repo intent; check first, then plan.
+
+### React Query + Next.js 14 App Router — QueryClient must be per-mount
+**Where:** `src/components/providers/QueryProvider.tsx`
+**Discovered:** 2026-04-23
+**Lesson:** `QueryClient` must be created inside `useState(() => new QueryClient())` (or equivalent), not at module scope. Module-scope instantiation causes the same `QueryClient` to be shared across concurrent server requests — user A's in-flight query can leak into user B's response. The `useState` factory gives each mount a stable, isolated client. `'use client'` directive is required on the provider component because `QueryClientProvider` uses React context.
+
+### `sales.core.users` seed rows exist; reconciliation never overwrites them
+**Where:** `src/lib/users.ts`, `sales.core.users`
+**Discovered:** 2026-04-23
+**Lesson:** As of Phase 3b start there are 7 seed rows in `sales.core.users`, including `kevin.ritter@alterahealth.com` (`usr-001`, role `Admin`, state `Active`). `getOrProvisionUser()` does a SELECT-then-INSERT: on hit it returns the existing row untouched; on miss it inserts with `role='pending'` + `state='Active'` + `password_hash='databricks_sso'` and re-SELECTs. Existing users keep whatever role and name the seed set for them — reconciliation is additive only. Unity Catalog does not enforce uniqueness on email, so concurrent first-logins for the same new email could produce duplicate rows; acceptable for internal single-digit signup rates, revisit if it becomes real.
+
+### `env.ts` validates lazily — `.env.local` does not reach Next build workers
+**Where:** `src/lib/env.ts`
+**Discovered:** 2026-04-23
+**Lesson:** Next.js 14 loads `.env.local` into the main build process, but the workers it spawns for page-data collection (`collectPageData`) do not reliably inherit those vars into their `process.env`. A module-load Zod `safeParse` in `env.ts` that throws on missing vars will fail the build even when `.env.local` has every required secret. Fix: lazy-validate via a `Proxy` that parses on first property access. Crash-fast is preserved (the first `env.X` read on any real request still throws if secrets are missing), but build-time introspection doesn't need production secrets to exist on the build machine. Surfaced in Phase 3b when `/dashboard` first acquired a transitive import of `db.ts → env.ts`; Phase 3a shipped with the latent issue because no page then imported `db.ts`.
+
+### Role vocabulary is prose-case — do not normalize
+**Where:** `src/lib/users.ts` `UserRole` type, `sales.core.users.role`
+**Discovered:** 2026-04-23
+**Lesson:** Existing `sales.core.users.role` values are prose-case strings: `Sales Executive`, `Executive`, `Admin`. New auto-provisioned users get `pending`. The TypeScript `UserRole` union is `'Sales Executive' | 'Executive' | 'Admin' | 'pending' | (string & {})` — the `(string & {})` tail keeps IntelliSense suggesting the known values while still accepting any other existing string. Do NOT snake_case-normalize (`sales_executive`) — the warehouse is the source of truth and any normalization would require a migration plus downstream fixes.

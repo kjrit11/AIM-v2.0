@@ -4,3 +4,13 @@ env:
     value: production
   - name: PORT
     valueFrom: DATABRICKS_APP_PORT
+  - name: AIM_CATALOG
+    value: sales
+  - name: ANTHROPIC_API_KEY
+    valueFrom: anthropic_api_key  # TODO: secret scope entry — Kevin creates post-merge
+  - name: DATABRICKS_SERVER_HOSTNAME
+    valueFrom: aim_warehouse_hostname  # TODO: app resource binding — Kevin wires post-merge
+  - name: DATABRICKS_HTTP_PATH
+    valueFrom: aim_warehouse_http_path  # TODO: app resource binding
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: aim_warehouse_id  # TODO: app resource binding

@@ -1,8 +1,16 @@
 import { cn } from '@/lib/cn';
 import type { DatabricksUser } from '@/lib/databricksUser';
+import type { UserRecord } from '@/lib/users';
 import { UserMenu } from './UserMenu';
 
-export function TopBar({ user }: { user: DatabricksUser }) {
+export function TopBar({
+  user,
+}: {
+  user: DatabricksUser;
+  // Accepted for future role-aware UI (Phase 3c). Currently unused — the
+  // header-authenticated `user` covers everything the TopBar renders today.
+  userRecord: UserRecord;
+}) {
   return (
     <header
       className={cn(

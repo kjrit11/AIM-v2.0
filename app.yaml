@@ -1,4 +1,5 @@
 command: ['node', '.next/standalone/server.js']
+
 env:
   - name: NODE_ENV
     value: production
@@ -7,10 +8,10 @@ env:
   - name: AIM_CATALOG
     value: sales
   - name: ANTHROPIC_API_KEY
-    valueFrom: anthropic_api_key  # TODO: secret scope entry — Kevin creates post-merge
+    valueFrom: anthropic_api_key_secret
   - name: DATABRICKS_SERVER_HOSTNAME
-    valueFrom: aim_warehouse_hostname  # TODO: app resource binding — Kevin wires post-merge
+    value: adb-1291693653051285.5.azuredatabricks.net
   - name: DATABRICKS_HTTP_PATH
-    valueFrom: aim_warehouse_http_path  # TODO: app resource binding
+    value: /sql/1.0/warehouses/4bc2370478860bc8
   - name: DATABRICKS_WAREHOUSE_ID
-    valueFrom: aim_warehouse_id  # TODO: app resource binding
+    value: '4bc2370478860bc8'

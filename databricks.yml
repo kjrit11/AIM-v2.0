@@ -14,3 +14,13 @@ resources:
     aim_v2_dev:
       name: aim-v2-dev
       source_code_path: ./
+      resources:
+        - name: aim_warehouse
+          sql_warehouse:
+            id: 4bc2370478860bc8
+            permission: CAN_USE
+        - name: anthropic_api_key_secret
+          secret:
+            scope: aim-v2-dev
+            key: anthropic_api_key
+            permission: READ

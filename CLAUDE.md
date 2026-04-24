@@ -1,6 +1,6 @@
 # CLAUDE.md — AIM v2 Sales Command Center
 
-**Last updated:** 2026-04-21 (Phase 2b — platform pivot to Databricks Apps native identity)
+**Last updated:** 2026-04-23 (Phase 3b — migration runner + user reconciliation + React Query)
 
 ---
 
@@ -38,7 +38,7 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Auth:** Databricks Apps native identity via x-forwarded-* headers (no passwords, no session storage)
 - **AI:** `@anthropic-ai/sdk` direct from Next.js API routes, model `claude-sonnet-4-6`
 - **Data:** Databricks SQL Connector → Unity Catalog (`sales.*` schemas)
-- **Migrations:** Versioned SQL files in `/migrations/versions/` run by CI (no Alembic — see `docs/MIGRATIONS.md`)
+- **Migrations:** Versioned SQL files in `/migrations/versions/` applied manually via `npx tsx scripts/migrate.ts` (no Alembic — see `docs/MIGRATIONS.md`). One statement per file. Filename-based dedup. SHA-256 checksums. App SP lacks DDL privilege; migrations apply only when Kevin runs the script.
 - **Charts:** `recharts`, lazy-loaded via `next/dynamic`
 - **Tables:** `@tanstack/react-table` v8
 - **PDF:** `@react-pdf/renderer` for proposal export (separate component tree from HTML preview)
@@ -46,8 +46,9 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Feature flags:** `sales.core.features` table + `useFeature()` hook
 - **Testing:** Playwright for 5 critical flows, Vitest for unit/component (no cap)
 - **Component lib:** Storybook 8 — every primitive documented before first use
-- **Hosting:** Databricks Apps (serves Next.js standalone output)
+- **Hosting:** Databricks Apps (serves Next.js standalone output via `node .next/standalone/server.js`). Deploy is two commands: `databricks bundle deploy -t dev` provisions resources; `databricks apps deploy aim-v2-dev --source-code-path ...` ships the code.
 - **Secrets:** Databricks secret scopes (can be Azure Key Vault-backed); no `.env.local` in production
+- **Env loading:** `/src/lib/env.ts` — Zod schema validated lazily via Proxy on first property access. Never read `process.env` directly outside this module. Module-load validation breaks Next 14 build workers (they don't inherit `.env.local`); the Proxy preserves crash-fast semantics on first real access while letting builds complete.
 
 ---
 
@@ -66,7 +67,9 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 11. Table and view names come from constants in `/src/lib/db.ts` — never hardcode schema strings in route files.
 12. Never interpolate user input into SQL. Use parameterized queries via `executeQuery()`.
 13. All AI calls go through `/src/lib/anthropic.ts` wrapper. No direct SDK imports in route files.
-14. Query duration logged on every `executeQuery()` call. Slow queries (>2s) alert via Sentry.
+14. Query duration logged on every `executeQuery()` call. Slow queries (>2s) emit `db.slow_query` warn-level log; Sentry forwarding is scaffolded but DSN is unset, so alerts are no-ops until provisioning.
+15. Never read `process.env` directly. Import the typed `env` object from `/src/lib/env.ts`. The lazy-Proxy pattern requires this — bypassing it loses validation and may cause prod runtime crashes that build-time would have caught.
+16. Server-side data fetchers called from multiple consumers in one request (e.g., layout + page) MUST be wrapped with React's `cache()` from 'react'. See `getOrProvisionUser` in `/src/lib/users.ts` for the pattern. Without it, every consumer triggers a separate DB hit per request.
 
 ---
 
@@ -75,9 +78,13 @@ Kevin Ritter, CEO, CareInMotion. Internal sales-ops tool. Not customer-facing.
 - **Style guide:** `/docs/STYLE_GUIDE.md` — minimalist Linear/Vercel aesthetic.
 - **Architecture decisions:** `/docs/ARCHITECTURE.md` — rationale for every stack choice, full schema inventory.
 - **Migration workflow:** `/docs/MIGRATIONS.md` — versioned SQL files, CI runner, rollback procedure.
-- **Wave 1 cleanup:** `/docs/WAVE_1_CLEANUP.md` — one-time pre-Phase-1 schema cleanup (5 migrations).
+- **Wave 1 cleanup:** `/docs/WAVE_1_CLEANUP.md` — one-time pre-Phase-1 schema cleanup (4 migrations applied 2026-04-19; rows in `sales.core.schema_migrations` have `checksum='bootstrap'`).
 - **Schema reference:** `/docs/SCHEMA.md` — regenerated from `DESCRIBE TABLE` output in Phase 3. Never trust memory; check here.
 - **Table/view name constants:** `/src/lib/db.ts` — `TABLES` and `VIEWS` const objects. Import these rather than hardcoding schema strings.
+- **Migration runner:** `/scripts/migrate.ts` — manual SQL migration applier. Reads `migrations/versions/*.sql`, dedups via filename in `sales.core.schema_migrations`, computes SHA-256 checksum per file, applies one statement per file. Run via `npx tsx scripts/migrate.ts`.
+- **DB smoke test:** `/scripts/db-smoke-test.ts` — quick exit-validator for warehouse connectivity. Run via `npx tsx scripts/db-smoke-test.ts`.
+- **User reconciliation:** `/src/lib/users.ts` — `getOrProvisionUser(email, name)` is the single call site for SELECT-or-INSERT against `sales.core.users`. Wrapped in `React.cache()`.
+- **React Query provider:** `/src/components/providers/QueryProvider.tsx` — wraps root layout. Client-only.
 - **Gotchas:** `/docs/GOTCHAS.md` — running list of hard-won lessons. Appended at the end of every session.
 - **Progress:** `/PROGRESS.md` — current phase, in-flight work, top 3 queued items.
 - **Full plan:** `/docs/REBUILD_PLAN.md` — phased build order, exit criteria per phase.
@@ -104,6 +111,7 @@ Do not start producing code or files in the first response. Confirm the plan fir
 
 - [ ] Which phase does this belong to? (Check `PROGRESS.md`.)
 - [ ] Which DB tables? Cross-check `/docs/SCHEMA.md`.
+- [ ] If the task touches DB schema (CREATE/ALTER/DROP/RENAME): run `SHOW TABLES IN sales.core` and `SHOW TABLES IN sales.app` against the live warehouse first. Repo state and warehouse state can drift. (Phase 3b discovered partial prior rename work this way.)
 - [ ] Any relevant entries in `/docs/GOTCHAS.md`?
 - [ ] `cat` every file that will change. Report what's there before editing.
 - [ ] Correct cache TTL? (From `queryConfig.ts` — never guess.)
